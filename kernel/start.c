@@ -41,7 +41,7 @@ start()
   timerinit();
 
   // keep each CPU's hartid in its tp register, for cpuid().
-  int id = r_mhartid();
+  uint64 id = r_mhartid();
   w_tp(id);
 
   // switch to supervisor mode and jump to main().
