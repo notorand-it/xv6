@@ -3,7 +3,7 @@
 
 I took a course in Operating Systems that covered the concepts at a high level, but I also want to understand how an actual OS works under the hood. I think this project is really good for understanding that. It's only about 6000 lines of code, so I can understand each part of the OS and even make changes as I see fit. Initially, I am just studying all parts of the system, but I will make small, incremental changes along the way to test my understanding. I am also adding comments to almost every file to ensure that I understand what's actually going on.
 
-Good series where a professor walks through all parts of the operating system and talks about the limitations and features of xv6. Here's the series: [The xv6 Kernel](https://www.youtube.com/watch?v=fWUJKH0RNFE&list=PLbtzT1TYeoMhTPzyTZboW_j7TPAnjv9XB&pp=iAQB)."
+Good series where a professor walks through all parts of the operating system and talks about the limitations and features of xv6. Here's the series: [The xv6 Kernel](https://www.youtube.com/watch?v=fWUJKH0RNFE&list=PLbtzT1TYeoMhTPzyTZboW_j7TPAnjv9XB&pp=iAQB).
 
 xV6 Book -> [xv6: a simple, Unix-like teaching operating system](https://pdos.csail.mit.edu/6.S081/2020/xv6/book-riscv-rev1.pdf)
 
