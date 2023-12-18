@@ -9,6 +9,9 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+// https://youtu.be/6hhJ6JN95As
+// This is for the compiler, just contains function prototypes 
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
@@ -16,6 +19,10 @@ void            brelse(struct buf*);
 void            bwrite(struct buf*);
 void            bpin(struct buf*);
 void            bunpin(struct buf*);
+
+
+// For example console.c contains atleast these 3 
+// functions that can be used in other files 
 
 // console.c
 void            consoleinit(void);
@@ -186,4 +193,9 @@ void            virtio_disk_rw(struct buf *, int);
 void            virtio_disk_intr(void);
 
 // number of elements in fixed-size array
+
+// This is just giving you the number of elements in an array
+// NELEM stands for number of elements 
+// it asks how big is the entire array and how big is a single element
+// and based on that computation we get the size of the entire array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
