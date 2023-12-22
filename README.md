@@ -21,6 +21,13 @@ MIT Website -> [6.1810: Operating System Engineering](https://pdos.csail.mit.edu
 | long      | 64   | 8     |
 
 
+## How does RISCV work?
+
+You should look at this video; it explains the RISCV architecture and it's pretty good.
+
+- [xv6 Kernel-7: RiscV Architecture](https://youtu.be/-S0Z0CmwkEk?list=PLbtzT1TYeoMhTPzyTZboW_j7TPAnjv9XB)
+
+
 ## Orignal README
 
 
