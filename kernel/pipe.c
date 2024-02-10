@@ -96,6 +96,14 @@ pipewrite(struct pipe *pi, uint64 addr, int n)
       i++;
     }
   }
+  // int y = pi->nread, z = pi->nwrite;
+  // printf("Bytes written to the pipe: ");
+  // while (y < z)
+  // {
+  //   printf("%x ", pi->data[y++]);
+  // }
+  // printf("\n");
+  
   wakeup(&pi->nread);
   release(&pi->lock);
 
@@ -117,6 +125,8 @@ piperead(struct pipe *pi, uint64 addr, int n)
     }
     sleep(&pi->nread, &pi->lock); //DOC: piperead-sleep
   }
+
+  // int y = pi->nread;
   for(i = 0; i < n; i++){  //DOC: piperead-copy
     if(pi->nread == pi->nwrite)
       break;
@@ -124,6 +134,15 @@ piperead(struct pipe *pi, uint64 addr, int n)
     if(copyout(pr->pagetable, addr + i, &ch, 1) == -1)
       break;
   }
+
+  // int z = pi->nread;
+  // printf("Bytes read from the pipe: ");
+  // while (y < z)
+  // {
+  //   printf("%x ", pi->data[y++]);
+  // }
+  // printf("\n");
+
   wakeup(&pi->nwrite);  //DOC: piperead-wakeup
   release(&pi->lock);
   return i;

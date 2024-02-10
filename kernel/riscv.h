@@ -338,22 +338,49 @@ typedef uint64 *pagetable_t; // 512 PTEs
 #define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
 #define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))
 
-#define PTE_V (1L << 0) // valid
-#define PTE_R (1L << 1)
-#define PTE_W (1L << 2)
-#define PTE_X (1L << 3)
-#define PTE_U (1L << 4) // user can access
+// Page flags
+#define PTE_V (1L << 0) // valid page entry and in use
+#define PTE_R (1L << 1) // read permitted
+#define PTE_W (1L << 2) // write permitted
+#define PTE_X (1L << 3) // executable permitted
+#define PTE_U (1L << 4) // user can access. Can be assesed in user mode
 
 // shift a physical address to the right place for a PTE.
+/*
+PA - Physical address
+PTE - Page table entry
+Converts a physical address to a page table entry format. 
+It shifts the physical address right by 12 (to drop the page offset bits since pages are 2^12 bytes in size) 
+  and then shifts it left by 10 to place it in the PTE format.
+*/
 #define PA2PTE(pa) ((((uint64)pa) >> 12) << 10)
 
+/*
+Extracts the physical address from a page table entry. 
+It performs the inverse operation of PA2PTE by shifting the PTE right by 10 (to remove flags) 
+  and then left by 12 to restore it to a full address.
+*/
 #define PTE2PA(pte) (((pte) >> 10) << 12)
 
+//Extracts the flags (the lowest 10 bits) from a page table entry.
 #define PTE_FLAGS(pte) ((pte) & 0x3FF)
 
-// extract the three 9-bit page table indices from a virtual address.
+
+// (PXMASK, PXSHIFT, PX) are combined together to extract the three 9-bit page table indices(plural of index) from a virtual address.
+
+// PXMASK: A mask to extract 9 bits, used in combination with PXSHIFT and PX to navigate the page table levels.
 #define PXMASK          0x1FF // 9 bits
+
+/*
+PXSHIFT(level): Calculates the shift amount based on the page table level (0, 1, or 2 in Sv39), 
+    allowing extraction of the index at each level of the page table.
+*/
 #define PXSHIFT(level)  (PGSHIFT+(9*(level)))
+
+/*
+PX(level, va): Extracts the page table index for a given level from a virtual address by applying the PXSHIFT for the level 
+    and then masking with PXMASK.
+*/
 #define PX(level, va) ((((uint64) (va)) >> PXSHIFT(level)) & PXMASK)
 
 // one beyond the highest possible virtual address.

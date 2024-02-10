@@ -12,8 +12,12 @@ int
 fetchaddr(uint64 addr, uint64 *ip)
 {
   struct proc *p = myproc();
+  // checks that the address is valid. 
+  //   It is not greater the max address in the process memory
+  //   It is at least 64 bytes before the max address so we do not read overflow i.e read beyond the max address in the memory
   if(addr >= p->sz || addr+sizeof(uint64) > p->sz) // both tests needed, in case of overflow
     return -1;
+  // copies an address from an in the process memory into the dest pointer
   if(copyin(p->pagetable, (char *)ip, addr, sizeof(*ip)) != 0)
     return -1;
   return 0;
@@ -25,7 +29,8 @@ int
 fetchstr(uint64 addr, char *buf, int max)
 {
   struct proc *p = myproc();
-  if(copyinstr(p->pagetable, buf, addr, max) < 0)
+  // copyinstr => copyin string, a type of the copyin function that copies nul-terminated string from an address to a destination buffer
+  if(copyinstr(p->pagetable, buf, addr, max) < 0) 
     return -1;
   return strlen(buf);
 }
@@ -134,6 +139,7 @@ syscall(void)
   int num;
   struct proc *p = myproc();
 
+  // Fetch syscall number/index from user process register a7
   num = p->trapframe->a7;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     // Use num to lookup the system call function for num, call it,

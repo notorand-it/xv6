@@ -38,6 +38,14 @@ memmove(void *dst, const void *src, uint n)
   
   s = src;
   d = dst;
+  // Determines if the src and dest addresses overlaps. 
+  // If they do we start copying from the end of source to avoid overwriting values in source before they are read/copied from source
+  // eg src  = A B C D 
+  //    dest =   B C D E
+  // we want to copy from from src[0:] to dest[0:] which is the same address as src[1:]
+  // if we start copying from src[0], we will overwrite src[1] when copy src[0] into dest[0]. result will be dest -> A A A A
+  // to prevent this, we start copying from the end src[n-1] into dest[n-1]. 
+  // The end result will be dest -> A B C D
   if(s < d && s + n > d){
     s += n;
     d += n;

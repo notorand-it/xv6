@@ -48,7 +48,12 @@ ls(char *path)
     break;
 
   case T_DIR:
-    if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){
+    if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){ 
+      //basically this checks that the following path generation can fit into the buffer 
+      // path (eg . or .. or a or /a or a/b or /a/b) + '/' + < a file/directory name> + '\0' (NULL TERMINATOR)
+      //  buffer will look like this in each iteration in the loop below
+      // path/<file or dir in directory>\0 
+      // e.g "dir1/fileA" where dir1 is the path arg passed to ls program while file A is a file in dir1
       printf("ls: path too long\n");
       break;
     }
@@ -64,6 +69,7 @@ ls(char *path)
         printf("ls: cannot stat %s\n", buf);
         continue;
       }
+      // IMO, we can replace fmtname(buf) with fmtname(de.name), also FYI st.ino == de.inum
       printf("%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
     }
     break;

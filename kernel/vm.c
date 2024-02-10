@@ -88,18 +88,19 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
   if(va >= MAXVA)
     panic("walk");
 
+  // walk through level 2 and 1
   for(int level = 2; level > 0; level--) {
-    pte_t *pte = &pagetable[PX(level, va)];
-    if(*pte & PTE_V) {
+    pte_t *pte = &pagetable[PX(level, va)]; //extract index and use to get the page entry from pagetable
+    if(*pte & PTE_V) { // check if page entry is valid and in use
       pagetable = (pagetable_t)PTE2PA(*pte);
-    } else {
-      if(!alloc || (pagetable = (pde_t*)kalloc()) == 0)
+    } else { //means the page entry is not in use
+      if(!alloc || (pagetable = (pde_t*)kalloc()) == 0) //if alloc is true, try to create a new page entry. Return 0 if alloc is false or attempt to kalloc fails
         return 0;
       memset(pagetable, 0, PGSIZE);
-      *pte = PA2PTE(pagetable) | PTE_V;
+      *pte = PA2PTE(pagetable) | PTE_V; //save newly allocated physical page address to the page entry and set the valid flag so it is now a valid entry
     }
   }
-  return &pagetable[PX(0, va)];
+  return &pagetable[PX(0, va)]; //returns a pointer to the page entry in level 0
 }
 
 // Look up a virtual address, return the physical address,
@@ -117,9 +118,9 @@ walkaddr(pagetable_t pagetable, uint64 va)
   pte = walk(pagetable, va, 0);
   if(pte == 0)
     return 0;
-  if((*pte & PTE_V) == 0)
+  if((*pte & PTE_V) == 0) //page entry is not valid
     return 0;
-  if((*pte & PTE_U) == 0)
+  if((*pte & PTE_U) == 0) //page entry cannot be read in user mode
     return 0;
   pa = PTE2PA(*pte);
   return pa;
@@ -379,18 +380,22 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
   uint64 n, va0, pa0;
 
   while(len > 0){
-    va0 = PGROUNDDOWN(srcva);
-    pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
+    //round up the virtual address to get the address of the page that contains this virtual address
+    va0 = PGROUNDDOWN(srcva);  
+
+    // Find the page address in the pagetable
+    pa0 = walkaddr(pagetable, va0); // get the physical address of this page virtual address
+    //We could not find the page address in the pagetable. It means the srcva provided is invalid for the process that owns the pagetable
+    if(pa0 == 0) 
       return -1;
-    n = PGSIZE - (srcva - va0);
+    n = PGSIZE - (srcva - va0); //num of bytes to read from the page
     if(n > len)
-      n = len;
+      n = len; // means the length of data to be read overlaps this page. We will read till the end of this page and read the rest of the data from the next page in the next iteration
     memmove(dst, (void *)(pa0 + (srcva - va0)), n);
 
     len -= n;
     dst += n;
-    srcva = va0 + PGSIZE;
+    srcva = va0 + PGSIZE; //next page address in case there is still data to be read i.e len is still greater than 0
   }
   return 0;
 }
