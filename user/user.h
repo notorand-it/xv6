@@ -1,6 +1,6 @@
 struct stat;
 
-// system calls
+// system calls. See usys.pl and usys.S to see how the assembly (ecalls) for these functions are generated
 int fork(void);
 int exit(int) __attribute__((noreturn));
 int wait(int*);
@@ -22,6 +22,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int trace(int);
 
 // ulib.c
 int stat(const char*, struct stat*);
