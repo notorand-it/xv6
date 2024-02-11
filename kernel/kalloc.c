@@ -80,3 +80,17 @@ kalloc(void)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
+
+// Returns the number of free memory in bytes that can be allocated
+int kfreemem() {
+  struct run *r = kmem.freelist;
+  int freelistcount = 0;
+
+  // Gets the number of free pages that can be allocated and multiplies the count by the size of a page PGSIZE
+  while(r) {
+    freelistcount++;
+    r = r->next;
+  }
+
+  return freelistcount * PGSIZE;
+}

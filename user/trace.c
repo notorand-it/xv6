@@ -35,12 +35,6 @@ int main(int argc, char *argv[]) {
     memmove(program_args, &argv[2], n_bytes);
     program_args[program_args_len] = 0;
 
-    int i = 0;
-    for(i = 1; i < program_args_len; i++) {
-        printf("%s ", program_args[i]);
-    }
-    printf("\n");
-
     if (fork() == 0) {
         trace(trace_mask);
         exec(program, program_args);

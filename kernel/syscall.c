@@ -8,6 +8,12 @@
 #include "defs.h"
 
 // Fetch the uint64 at addr from the current process.
+// reads from user space vmem address addr into kernel space pointer variable ip. 
+// The value read from addr vmem should be another vmem address
+//  This is useful for copying pointer of pointer args into kernel mem
+// For example, if syscall arg 0 is char** ptr. It means arg 0 contains user vmem address A and address A contains another user vmem address B
+//  So to get address B we have to get address A first by using ardadd(0, addr), addr will now contain address A
+//  To get address B we then call fetchaddr(addr, ip), kernel variable pointer ip will now contains address B
 int
 fetchaddr(uint64 addr, uint64 *ip)
 {
@@ -17,7 +23,7 @@ fetchaddr(uint64 addr, uint64 *ip)
   //   It is at least 64 bytes before the max address so we do not read overflow i.e read beyond the max address in the memory
   if(addr >= p->sz || addr+sizeof(uint64) > p->sz) // both tests needed, in case of overflow
     return -1;
-  // copies an address from an in the process memory into the dest pointer
+
   if(copyin(p->pagetable, (char *)ip, addr, sizeof(*ip)) != 0)
     return -1;
   return 0;
@@ -25,11 +31,12 @@ fetchaddr(uint64 addr, uint64 *ip)
 
 // Fetch the nul-terminated string at addr from the current process.
 // Returns length of string, not including nul, or -1 for error.
+// reads from provided user space vmem address addr into kernel space buffer
 int
 fetchstr(uint64 addr, char *buf, int max)
 {
   struct proc *p = myproc();
-  // copyinstr => copyin string, a type of the copyin function that copies nul-terminated string from an address to a destination buffer
+  // copyinstr => copyin string, a type of the copyin function that copies nul-terminated string from an address in user process memory to a destination buffer in kernel memory
   if(copyinstr(p->pagetable, buf, addr, max) < 0) 
     return -1;
   return strlen(buf);
@@ -67,6 +74,9 @@ argint(int n, int *ip)
 // Retrieve an argument as a pointer.
 // Doesn't check for legality, since
 // copyin/copyout will do that.
+//for example if syscall is sys_info(&sysinfostruct) or sys_info(sys_info_ptr) where struct sysinfo* sys_info_ptr = &sysinfostruct, 
+//   argaddr will copy the virtual address of sysinfostruct from user space into arg_addr variable in kernel space
+//   We can then copy data from kernel mem space into user space by calling copyout and passing this userspace vmem address as the dest and also provide the user space process pagetable
 void
 argaddr(int n, uint64 *ip)
 {
@@ -81,7 +91,7 @@ argstr(int n, char *buf, int max)
 {
   uint64 addr;
   argaddr(n, &addr);
-  return fetchstr(addr, buf, max);
+  return fetchstr(addr, buf, max); //read from user space vmem address and copy into kernel space buf
 }
 
 // Prototypes for the functions that handle system calls.
@@ -107,6 +117,7 @@ extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 extern uint64 sys_trace(void);
+extern uint64 sys_info(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -133,6 +144,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_trace]   sys_trace,
+[SYS_sysinfo] sys_info,
 };
 
 static char* syscall_names[] = {
@@ -158,6 +170,7 @@ static char* syscall_names[] = {
   [SYS_mkdir]   "mkdir",
   [SYS_close]   "close",
   [SYS_trace]   "trace",
+  [SYS_sysinfo] "sysinfo",
 };
 
 _Static_assert(NELEM(syscalls) == NELEM(syscall_names), "syscalls and syscall_names count do not match.");

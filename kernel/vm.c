@@ -91,7 +91,7 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
   // walk through level 2 and 1
   for(int level = 2; level > 0; level--) {
     pte_t *pte = &pagetable[PX(level, va)]; //extract index and use to get the page entry from pagetable
-    if(*pte & PTE_V) { // check if page entry is valid and in use
+    if(*pte & PTE_V) { // check if page entry is valid
       pagetable = (pagetable_t)PTE2PA(*pte);
     } else { //means the page entry is not in use
       if(!alloc || (pagetable = (pde_t*)kalloc()) == 0) //if alloc is true, try to create a new page entry. Return 0 if alloc is false or attempt to kalloc fails
@@ -371,7 +371,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
   return 0;
 }
 
-// Copy from user to kernel.
+// Copy from user to kernel memory.
 // Copy len bytes to dst from virtual address srcva in a given page table.
 // Return 0 on success, -1 on error.
 int

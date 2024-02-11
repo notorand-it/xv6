@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sysinfo.h"
 
 uint64
 sys_exit(void)
@@ -98,4 +99,18 @@ sys_trace(void)
   argint(0, &mask);
   trace(mask);
   return 0;
+}
+
+uint64 
+sys_info(void) {
+  struct sysinfo info = {0};
+  uint64 arg_addr;
+
+  argaddr(0, &arg_addr); // get the address passed as arg 0 to the syscall and save it in kernel mem space variable arg_addr
+
+  info.nproc = nproc();
+  info.freemem = kfreemem();
+
+  // write struct sysinfo bytes into virtual address gotten from user space 
+  return copyout(myproc()->pagetable, arg_addr, (char*)&info, sizeof(info));
 }
