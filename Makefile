@@ -136,6 +136,9 @@ UPROGS=\
 	$U/_suma\
 	$U/_sumb\
 	$U/_sumc\
+	$U/_forknsleep\
+	$U/_forknargs\
+	$U/_forknwc\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
