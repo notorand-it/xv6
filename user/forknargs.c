@@ -42,9 +42,8 @@ int main(int argc, char **argv) {
             raise_err("Buffer overflow.\n");
         }
 
-        strcpy(arg_buff, argv[i]);
-        arg_buff[arg_len] = '\n';
-        write(p[1], arg_buff, arg_len + 1);
+        //argv[arg_len] = '\n';
+        write(p[1], argv[i], arg_len + 1);
     }
 
     close(p[1]);
