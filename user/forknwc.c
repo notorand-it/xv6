@@ -30,7 +30,6 @@ int main(int argc, char **argv) {
     }
 
     close(p[0]); // Будем только писать
-    char arg_buff[BUFF_SIZE];
     int arg_len;
     for (int i = 1; i < argc; i++) {
         arg_len = strlen(argv[i]);
@@ -41,9 +40,8 @@ int main(int argc, char **argv) {
             raise_err("Buffer overflow.\n");
         }
 
-        strcpy(arg_buff, argv[i]);
-        arg_buff[arg_len] = '\n';
-        write(p[1], arg_buff, arg_len + 1);
+        argv[i][arg_len] = '\n';
+        write(p[1], argv[i], arg_len + 1);
     }
 
     close(p[1]);
