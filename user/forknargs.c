@@ -41,8 +41,10 @@ int main(int argc, char **argv) {
             raise_err("Buffer overflow.\n");
         }
 
-        argv[i][arg_len] = '\n';
-        write(p[1], argv[i], arg_len + 1);
+        int arg_write_status = write(p[1], argv[i], strlen(argv[i]));
+        check_write_status(arg_write_status, strlen(argv[i]));
+        int n_write_status = write(p[1], "\n", 1);
+        check_write_status(n_write_status, 1);
     }
 
     close(p[1]);
