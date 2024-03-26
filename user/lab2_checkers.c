@@ -26,5 +26,10 @@ void check_read_status(int read_status) {
     }
 }
 
+void check_write_status(int write_status, int bytes_to_write) {
+    if (write_status != bytes_to_write) {
+        raise_err("Write error.\n");
+    }
+}
 
 #endif
