@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "procinfo.h"
 
 struct cpu cpus[NCPU];
 
@@ -33,7 +34,7 @@ void
 proc_mapstacks(pagetable_t kpgtbl)
 {
   struct proc *p;
-  
+
   for(p = proc; p < &proc[NPROC]; p++) {
     char *pa = kalloc();
     if(pa == 0)
@@ -48,7 +49,7 @@ void
 procinit(void)
 {
   struct proc *p;
-  
+
   initlock(&pid_lock, "nextpid");
   initlock(&wait_lock, "wait_lock");
   for(p = proc; p < &proc[NPROC]; p++) {
@@ -93,7 +94,7 @@ int
 allocpid()
 {
   int pid;
-  
+
   acquire(&pid_lock);
   pid = nextpid;
   nextpid = nextpid + 1;
@@ -236,7 +237,7 @@ userinit(void)
 
   p = allocproc();
   initproc = p;
-  
+
   // allocate one user page and copy initcode's instructions
   // and data into it.
   uvmfirst(p->pagetable, initcode, sizeof(initcode));
@@ -372,7 +373,7 @@ exit(int status)
 
   // Parent might be sleeping in wait().
   wakeup(p->parent);
-  
+
   acquire(&p->lock);
 
   p->xstate = status;
@@ -428,7 +429,7 @@ wait(uint64 addr)
       release(&wait_lock);
       return -1;
     }
-    
+
     // Wait for a child to exit.
     sleep(p, &wait_lock);  //DOC: wait-sleep
   }
@@ -446,7 +447,7 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
-  
+
   c->proc = 0;
   for(;;){
     // Avoid deadlock by ensuring that devices can interrupt.
@@ -536,7 +537,7 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
   struct proc *p = myproc();
-  
+
   // Must acquire p->lock in order to
   // change p->state and then call sched.
   // Once we hold p->lock, we can be
@@ -615,7 +616,7 @@ int
 killed(struct proc *p)
 {
   int k;
-  
+
   acquire(&p->lock);
   k = p->killed;
   release(&p->lock);
@@ -681,3 +682,53 @@ procdump(void)
     printf("\n");
   }
 }
+
+int ps_listinfo(procinfo_t *plist, int lim) {
+    int active_proc_cnt = 0;
+    struct proc *curr_proc;
+
+    for (curr_proc = proc; curr_proc < &proc[NPROC]; curr_proc++) {
+        acquire(&(curr_proc->lock));
+
+        if (curr_proc->state == UNUSED) {
+            release(&(curr_proc->lock));
+            continue;
+        }
+        active_proc_cnt++;
+
+        if (active_proc_cnt > lim) {
+            release(&(curr_proc->lock));
+            return active_proc_cnt;
+        }
+
+        if (plist == 0) {
+            release(&(curr_proc->lock));
+            continue;
+        }
+
+        struct procinfo tmp_proc;
+        tmp_proc.state = curr_proc->state;
+
+        acquire(&wait_lock);
+        if (curr_proc->parent == 0) { tmp_proc.parent_id = 0; }
+        else {
+            acquire(&(curr_proc->parent->lock));
+            tmp_proc.parent_id = curr_proc->parent->pid;
+            release(&(curr_proc->parent->lock));
+        }
+        release(&wait_lock);
+
+        safestrcpy(tmp_proc.name, curr_proc->name, strlen(curr_proc->name) + 1);
+
+        if (copyout(myproc()->pagetable, (uint64) (plist + active_proc_cnt - 1),
+                    (char *) &tmp_proc, sizeof(tmp_proc)) < 0) {
+            release(&(curr_proc->lock));
+            return -1;
+        }
+
+        release(&(curr_proc->lock));
+    }
+
+    return active_proc_cnt;
+}
+
