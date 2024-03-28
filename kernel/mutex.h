@@ -6,4 +6,9 @@ struct mutex {
     struct sleeplock lock;
 };
 
+typedef struct {
+    struct spinlock access_lock;
+    struct mutex table[NMUTEX];
+} mutex_table_t;
+
 #endif //XV6_RISCV_OS_LAB1_MUTEX_H

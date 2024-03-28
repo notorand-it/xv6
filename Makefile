@@ -143,6 +143,7 @@ UPROGS=\
 	$U/_forknwc\
 	$U/_test_ps_listinfo\
 	$U/_ps\
+	$U/_mutex_test\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

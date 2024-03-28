@@ -8,10 +8,7 @@
 #include "defs.h"
 #include "mutex.h"
 
-struct {
-    struct spinlock access_lock;
-    struct mutex table[NMUTEX];
-} mutex_table;
+mutex_table_t mutex_table;
 
 void mutexinit(void) {
     initlock(&mutex_table.access_lock, "Init mutex table access lock");
@@ -35,8 +32,8 @@ int mutex_create(void) {
 
             acquire(&curr_proc->lock);
             for (int j = 0; j < NOMUTEX; j++) {
-                if (curr_proc->omutex[j]->open_md_cnt == 0) {
-                    curr_proc->omutex[j]->open_md_cnt = 1;
+                if (curr_proc->omutex[j] == 0) {
+                    curr_proc->omutex[j] = &mutex_table.table[i];
                     release(&curr_proc->lock);
                     return j;
                 }

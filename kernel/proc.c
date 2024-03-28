@@ -3,9 +3,11 @@
 #include "memlayout.h"
 #include "riscv.h"
 #include "spinlock.h"
+#include "sleeplock.h"
 #include "proc.h"
 #include "defs.h"
 #include "procinfo.h"
+#include "mutex.h"
 
 struct cpu cpus[NCPU];
 
@@ -26,6 +28,8 @@ extern char trampoline[]; // trampoline.S
 // memory model when using p->parent.
 // must be acquired before any p->lock.
 struct spinlock wait_lock;
+
+extern mutex_table_t mutex_table;
 
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
@@ -315,6 +319,15 @@ fork(void)
 
   release(&np->lock);
 
+  acquire(&mutex_table.access_lock);
+  for (i = 0; i < NOMUTEX; i++) {
+      np->omutex[i] = p->omutex[i];
+      if (np->omutex[i] != 0) {
+          np->omutex[i]->open_md_cnt++;
+      }
+  }
+  release(&mutex_table.access_lock);
+
   acquire(&wait_lock);
   np->parent = p;
   release(&wait_lock);
@@ -380,6 +393,14 @@ exit(int status)
   p->state = ZOMBIE;
 
   release(&wait_lock);
+
+  acquire(&mutex_table.access_lock);
+  for (int i = 0; i < NOMUTEX; i++) {
+      if (p->omutex[i] != 0) {
+          p->omutex[i]->open_md_cnt--;
+      }
+  }
+  release(&mutex_table.access_lock);
 
   // Jump into the scheduler, never to return.
   sched();
