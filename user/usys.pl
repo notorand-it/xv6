@@ -37,4 +37,8 @@ entry("sbrk");
 entry("sleep");
 entry("uptime");
 entry("add");
-entry("ps_listinfo")
+entry("ps_listinfo");
+entry("mutex_create");
+entry("mutex_destroy");
+entry("mutex_lock");
+entry("mutex_unlock");
