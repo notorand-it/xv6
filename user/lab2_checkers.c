@@ -1,17 +1,14 @@
 #ifndef XV6_RISCV_OS_LAB2_CHECKERS_C
 #define XV6_RISCV_OS_LAB2_CHECKERS_C
 
-const int STDERR_D = 2;
-
-void raise_err(char *err_msg) {
-    write(STDERR_D, err_msg, strlen(err_msg));
-    exit(1);
-}
+#include "check_helpers.c"
 
 void fork_check(int pid) {
-    if (pid < 0) {
-        raise_err("Fork error.\n");
-    }
+    if (pid < 0) raise_err("Fork error.\n");
+}
+
+void pipe_check(int pipe_code) {
+    if (pipe_code < 0) raise_err("Pipe error.\n");
 }
 
 void kill_check(int kill_status) {
