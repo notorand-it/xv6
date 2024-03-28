@@ -56,8 +56,10 @@ int main(int argc, char **argv) {
         printf("%d: received %c\n", getpid(), c);
         if (is_correct_version) mutex_check(mutex_unlock(mutex));
     }
+
     close(parent[0]);
     wait((int *) 0);
+    mutex_destroy(mutex);
 
     exit(0);
 }

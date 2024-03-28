@@ -30,15 +30,12 @@ int mutex_create(void) {
             mutex_table.table[i].open_md_cnt = 1;
             release(&mutex_table.access_lock);
 
-            acquire(&curr_proc->lock);
             for (int j = 0; j < NOMUTEX; j++) {
                 if (curr_proc->omutex[j] == 0) {
                     curr_proc->omutex[j] = &mutex_table.table[i];
-                    release(&curr_proc->lock);
-                    return j;
+                    return i;
                 }
             }
-            release(&curr_proc->lock);
             return -1; // NOMUTEX lim exceeded
         }
     }
@@ -59,18 +56,12 @@ int mutex_destroy(int md) {
 
     struct proc *curr_proc = myproc();
 
-    acquire(&curr_proc->lock);
-    if (curr_proc->omutex[md] == 0) { // Mutex for this proc exists, but not opened yet
-        release(&curr_proc->lock);
-        return -3;
-    }
+    if (curr_proc->omutex[md] == 0) return -3; // Mutex for this proc exists, but not opened yet
 
-    if (holdingsleep(&curr_proc->omutex[md]->lock))
-        releasesleep(&curr_proc->omutex[md]->lock); // TODO: подумай, чет большой лок для спинлока
+    if (holdingsleep(&curr_proc->omutex[md]->lock)) releasesleep(&curr_proc->omutex[md]->lock);
 
     curr_proc->omutex[md] = 0;
     mutex_table.table[md].open_md_cnt--;
-    release(&curr_proc->lock);
 
     release(&mutex_table.access_lock);
     return 0;
