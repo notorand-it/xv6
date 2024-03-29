@@ -30,6 +30,8 @@ OBJS = \
   $K/plic.o \
   $K/virtio_disk.o \
   $K/sysadd.o \
+  $K/mutex.o \
+  $K/sysmutex.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -141,6 +143,7 @@ UPROGS=\
 	$U/_forknwc\
 	$U/_test_ps_listinfo\
 	$U/_ps\
+	$U/_mutex_test\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

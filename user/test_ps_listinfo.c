@@ -2,14 +2,7 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 #include "kernel/procinfo.h"
-
-// Может потом вытащу ассерт в отдельный файл, раз уж тут нет обычного ассерта
-void myassert(const int true_statement, const char *err_msg) {
-    if (!true_statement) {
-        write(2, err_msg, strlen(err_msg));
-        exit(1);
-    }
-}
+#include "check_helpers.c"
 
 void test_correct_ps(void) {
     printf("[test_correct_ps] ");

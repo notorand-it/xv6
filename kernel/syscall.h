@@ -22,3 +22,7 @@
 #define SYS_close  21
 #define SYS_add    22
 #define SYS_ps_listinfo 23
+#define SYS_mutex_create 24
+#define SYS_mutex_destroy 25
+#define SYS_mutex_lock 26
+#define SYS_mutex_unlock 27
