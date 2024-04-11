@@ -13,9 +13,17 @@
 // unused RAM after 80000000.
 
 // the kernel uses physical memory thus:
-// 80000000 -- entry.S, then kernel text and data
-// end -- start of kernel page allocation area
+// 80000000 -- entry.S 
+// kernel text
+//   etext -- end text, defined in kernel.ld to indicate the end of the kernel text(executable code)
+// data
+// end -- start of kernel page allocation area. defined in kernel.ld to indicate the end of kernel text and data
 // PHYSTOP -- end RAM used by the kernel
+// KSTACK n where n is the number of processes
+// Guard page
+// KSTACK 0
+// Guard page
+// TRAMPOLINE
 
 // qemu puts UART registers here in physical memory.
 #define UART0 0x10000000L
@@ -53,6 +61,10 @@
 
 // map kernel stacks beneath the trampoline,
 // each surrounded by invalid guard pages.
+// p is the index of the process to allocate a kernel stack to. 
+// 2 pages are allocated, 1 for the kernel stack while the other is a page guard
+// formula here is basically trampoline - ((process_index + 1) * 2*PGSIZE)
+// The result will be the starting address of the kernel stack
 #define KSTACK(p) (TRAMPOLINE - ((p)+1)* 2*PGSIZE)
 
 // User memory layout.
@@ -62,6 +74,13 @@
 //   fixed-size stack
 //   expandable heap
 //   ...
+//   USYSCALL (p->usyscall, used by ugetpid in user space)
 //   TRAPFRAME (p->trapframe, used by the trampoline)
 //   TRAMPOLINE (the same page as in the kernel)
 #define TRAPFRAME (TRAMPOLINE - PGSIZE)
+
+#define USYSCALL (TRAPFRAME - PGSIZE)
+
+struct usyscall { 
+    int pid; // Process ID 
+};

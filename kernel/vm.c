@@ -21,7 +21,7 @@ kvmmake(void)
 {
   pagetable_t kpgtbl;
 
-  kpgtbl = (pagetable_t) kalloc();
+  kpgtbl = (pagetable_t) kalloc(); //create root page table of the kernel
   memset(kpgtbl, 0, PGSIZE);
 
   // uart registers
@@ -96,7 +96,7 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
     } else { //means the page entry is not in use
       if(!alloc || (pagetable = (pde_t*)kalloc()) == 0) //if alloc is true, try to create a new page entry. Return 0 if alloc is false or attempt to kalloc fails
         return 0;
-      memset(pagetable, 0, PGSIZE);
+      memset(pagetable, 0, PGSIZE); // pagetable points to a chunk of 4096 bytes. Aligned by 64 bits/8 bytes. Means we can have 512 8 bytes integers stored here
       *pte = PA2PTE(pagetable) | PTE_V; //save newly allocated physical page address to the page entry and set the valid flag so it is now a valid entry
     }
   }
@@ -232,7 +232,9 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
   if(newsz < oldsz)
     return oldsz;
 
-  oldsz = PGROUNDUP(oldsz);
+  // round up to the next multiple of PGSIZE if oldsz is not a multiple of PGSIZE
+  // for example, 4096 will round up to 8192 while 4000 will round up to 4096
+  oldsz = PGROUNDUP(oldsz); 
   for(a = oldsz; a < newsz; a += PGSIZE){
     mem = kalloc();
     if(mem == 0){
