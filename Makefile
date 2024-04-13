@@ -32,6 +32,7 @@ OBJS = \
   $K/sysadd.o \
   $K/mutex.o \
   $K/sysmutex.o \
+  $K/dmsgbuff.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -144,6 +145,7 @@ UPROGS=\
 	$U/_test_ps_listinfo\
 	$U/_ps\
 	$U/_mutex_test\
+	$U/_dmsg_test\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

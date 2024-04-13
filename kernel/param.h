@@ -14,3 +14,6 @@
 
 #define NOMUTEX      16 // open mutexes per process
 #define NMUTEX       64 // open mutexes per system
+#define NDMSGPAGE    2  // num of pages for diag msg buff
+
+#define DIAG_MSG_BUFF_SIZE (NDMSGPAGE * PGSIZE) // full size of diag msg buff

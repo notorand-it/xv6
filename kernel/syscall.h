@@ -26,3 +26,4 @@
 #define SYS_mutex_destroy 25
 #define SYS_mutex_lock 26
 #define SYS_mutex_unlock 27
+#define SYS_dmesg 28

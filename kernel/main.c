@@ -28,6 +28,7 @@ main()
     iinit();         // inode table
     fileinit();      // file table
     mutexinit();     // mutex table
+    dmsg_buff_init(); // diag msg buff
     virtio_disk_init(); // emulated hard disk
     userinit();      // first user process
     __sync_synchronize();
