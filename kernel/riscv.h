@@ -335,8 +335,8 @@ typedef uint64 *pagetable_t; // 512 PTEs
 #define PGSIZE 4096 // bytes per page
 #define PGSHIFT 12  // bits of offset within a page
 
-#define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
-#define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))
+#define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1)) // First address of the page after sz current's page by first making sz fall into an address in the next page, then clear the bits
+#define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1)) // First address in the page address `a` falls in by clearing the LSB 12 bits offset
 
 // Page flags
 #define PTE_V (1L << 0) // valid page entry and in use
@@ -344,6 +344,7 @@ typedef uint64 *pagetable_t; // 512 PTEs
 #define PTE_W (1L << 2) // write permitted
 #define PTE_X (1L << 3) // executable permitted
 #define PTE_U (1L << 4) // user can access. Can be assesed in user mode
+#define PTE_A (1L << 6) // page has been accessed
 
 // shift a physical address to the right place for a PTE.
 /*

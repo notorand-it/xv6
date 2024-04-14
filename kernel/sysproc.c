@@ -7,6 +7,8 @@
 #include "proc.h"
 #include "sysinfo.h"
 
+/* Syscalls for managing processes*/
+
 uint64
 sys_exit(void)
 {
@@ -113,4 +115,52 @@ sys_info(void) {
 
   // write struct sysinfo bytes into virtual address gotten from user space 
   return copyout(myproc()->pagetable, arg_addr, (char*)&info, sizeof(info));
+}
+
+uint64
+sys_pgaccess(void) {
+  uint64 page_start, page_end, curr_page;
+  uint64 result_addr;
+  int numpages, result = 0;
+  pte_t* pte;
+  pagetable_t pagetable;
+  int i = 0;
+
+  argaddr(0, &page_start);
+  argint(1, &numpages);
+  argaddr(2, &result_addr);
+
+  page_start = PGROUNDDOWN(page_start);
+
+  // ensure max num of pages that can be checked
+  if (numpages > 1024) {
+    return -1;
+  }
+
+  page_end = page_start + ((numpages - 1) * PGSIZE);
+
+  // ensure we do not check pages after MAXVA
+  if (page_end > MAXVA) {
+    return -2;
+  }
+
+  curr_page = page_start;
+  pagetable = myproc()->pagetable;
+
+  for (; i < numpages; i++) {
+    pte = walk(pagetable, curr_page, 0);
+    curr_page += PGSIZE;
+
+    if (pte == 0) { ///points to nothing so deferencing in the next if statement should not be allowed
+      continue;
+    }
+
+    if (*pte & PTE_A) { //maybe only check if it has been accessed?
+      result = result | (1 << i);
+      *pte = *pte & ~PTE_A; //clear access bit
+    }
+  }
+  
+  copyout(pagetable, result_addr, (char*) &result, sizeof(uint));
+  return 0;
 }

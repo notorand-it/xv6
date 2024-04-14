@@ -36,7 +36,7 @@ int
 fetchstr(uint64 addr, char *buf, int max)
 {
   struct proc *p = myproc();
-  // copyinstr => copyin string, a type of the copyin function that copies nul-terminated string from an address in user process memory to a destination buffer in kernel memory
+  // copyinstr => (copy in string), a type of the copyin function that copies nul-terminated string from an address in user process memory to a destination buffer in kernel memory
   if(copyinstr(p->pagetable, buf, addr, max) < 0) 
     return -1;
   return strlen(buf);
@@ -74,7 +74,7 @@ argint(int n, int *ip)
 // Retrieve an argument as a pointer.
 // Doesn't check for legality, since
 // copyin/copyout will do that.
-//for example if syscall is sys_info(&sysinfostruct) or sys_info(sys_info_ptr) where struct sysinfo* sys_info_ptr = &sysinfostruct, 
+// for example if syscall is sys_info(&sysinfostruct) or sys_info(sys_info_ptr) where struct sysinfo* sys_info_ptr = &sysinfostruct, 
 //   argaddr will copy the virtual address of sysinfostruct from user space into arg_addr variable in kernel space
 //   We can then copy data from kernel mem space into user space by calling copyout and passing this userspace vmem address as the dest and also provide the user space process pagetable
 void
@@ -118,6 +118,7 @@ extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 extern uint64 sys_trace(void);
 extern uint64 sys_info(void);
+extern uint64 sys_pgaccess(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -145,6 +146,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 [SYS_trace]   sys_trace,
 [SYS_sysinfo] sys_info,
+[SYS_pgaccess] sys_pgaccess,
 };
 
 static char* syscall_names[] = {
@@ -171,6 +173,7 @@ static char* syscall_names[] = {
   [SYS_close]   "close",
   [SYS_trace]   "trace",
   [SYS_sysinfo] "sysinfo",
+  [SYS_pgaccess] "pgaccess",
 };
 
 _Static_assert(NELEM(syscalls) == NELEM(syscall_names), "syscalls and syscall_names count do not match.");

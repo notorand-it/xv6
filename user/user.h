@@ -1,7 +1,7 @@
 struct stat;
 struct sysinfo;
 
-// system calls. See usys.pl and usys.S to see how the assembly (ecalls) for these functions are generated
+// system calls. Check usys.pl and usys.S to see how the assembly (ecalls) for these functions are generated
 int fork(void);
 int exit(int) __attribute__((noreturn));
 int wait(int*);
@@ -25,6 +25,7 @@ int sleep(int);
 int uptime(void);
 int trace(int);
 int sysinfo(struct sysinfo *);
+int pgaccess(void*, int, uint*);
 
 // ulib.c
 int stat(const char*, struct stat*);
