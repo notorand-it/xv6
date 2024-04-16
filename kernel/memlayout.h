@@ -25,6 +25,12 @@
 // Guard page
 // TRAMPOLINE
 
+#ifndef __ASSEMBLER__
+struct usyscall { 
+    int pid; // Process ID 
+};
+#endif
+
 // qemu puts UART registers here in physical memory.
 #define UART0 0x10000000L
 #define UART0_IRQ 10
@@ -80,7 +86,3 @@
 #define TRAPFRAME (TRAMPOLINE - PGSIZE)
 
 #define USYSCALL (TRAPFRAME - PGSIZE)
-
-struct usyscall { 
-    int pid; // Process ID 
-};

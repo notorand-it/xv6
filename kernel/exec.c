@@ -46,31 +46,39 @@ exec(char *path, char **argv)
   if(elf.magic != ELF_MAGIC)
     goto bad;
 
+  // create a pagetable, will only commit (i.e replace the process current pagetable) at the end
   if((pagetable = proc_pagetable(p)) == 0)
     goto bad;
 
-  // Load program into memory.
+  // Load program into memory. 
+  // Loop through all the program header table entries starting from the offset
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, 0, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
     if(ph.type != ELF_PROG_LOAD)
       continue;
-    if(ph.memsz < ph.filesz)
+    if(ph.memsz < ph.filesz) //memsz has to be >= filesz as filesz bytes may be copied into memory allocated memsz
       goto bad;
-    if(ph.vaddr + ph.memsz < ph.vaddr)
+    if(ph.vaddr + ph.memsz < ph.vaddr) // detect integer overflow attack. can be used to overwrite lower addresses
       goto bad;
     if(ph.vaddr % PGSIZE != 0)
       goto bad;
     uint64 sz1;
-    if((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz, flags2perm(ph.flags))) == 0)
+    if((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz, flags2perm(ph.flags))) == 0) // allocate the neccessary pages for this segment based on memsz
       goto bad;
     sz = sz1;
-    if(loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
+    if(loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0) //load segment from file into pagetable at vaddr
       goto bad;
   }
   iunlockput(ip);
   end_op();
   ip = 0;
+
+  // Make page 0 inaccessible so virtual address 0 will be invalid in any user program.
+  // This will ensure null pointers cannot be deferenced and will raise a fault if attempted.
+  // My problem with this approach is the physical page allocated to this page is just a waste as it will not be used by the process
+  uvmclear(pagetable, 0);
+  // uvmunmap(pagetable, 0, 1, 1); tried unmapping the first page so the allocated physical page is not wasted but uvmcopy needs the first page to exist when copying from parent to child process.
 
   p = myproc();
   uint64 oldsz = p->sz;
@@ -85,7 +93,7 @@ exec(char *path, char **argv)
   sz = sz1;
   uvmclear(pagetable, sz-2*PGSIZE);
   sp = sz;
-  stackbase = sp - PGSIZE;
+  stackbase = sp - PGSIZE; //lowest address in the stack. sp cannot be less than stackbase else we have exceeded the stack space allocated.
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
