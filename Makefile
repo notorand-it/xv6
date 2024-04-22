@@ -164,6 +164,9 @@ QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 qemu: $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS)
 
+bear: clean $K/kernel fs.img
+	echo "Created compile_commands.json"
+
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
 
