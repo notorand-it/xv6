@@ -26,6 +26,7 @@
         ] ++ (with pkgs; [
           gnumake
           qemu
+          bear
         ]);
       };
     };
