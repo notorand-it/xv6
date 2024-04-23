@@ -102,9 +102,10 @@ atoi(const char *s)
     return 0;
 
   uint8 negate = 0;
-  if (s[0] == '-') {
+  if (s[0] == '-' || s[0] == '+') {
+    if (s[0] == '-'
+      negate = 1;
     s += 1;
-    negate = 1;
   }
 
   int n = 0;
