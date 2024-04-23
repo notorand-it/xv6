@@ -103,7 +103,7 @@ atoi(const char *s)
 
   uint8 negate = 0;
   if (s[0] == '-' || s[0] == '+') {
-    if (s[0] == '-'
+    if (s[0] == '-')
       negate = 1;
     s += 1;
   }
