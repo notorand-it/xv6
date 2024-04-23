@@ -98,12 +98,20 @@ stat(const char *n, struct stat *st)
 int
 atoi(const char *s)
 {
-  int n;
+  if (strlen(s) == 0)
+    return 0;
 
-  n = 0;
+  uint8 negate = 0;
+  if (s[0] == '-') {
+    s += 1;
+    negate = 1;
+  }
+
+  int n = 0;
   while('0' <= *s && *s <= '9')
     n = n*10 + *s++ - '0';
-  return n;
+
+  return negate ? -n : n;
 }
 
 void*
