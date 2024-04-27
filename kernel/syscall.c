@@ -119,6 +119,7 @@ extern uint64 sys_close(void);
 extern uint64 sys_trace(void);
 extern uint64 sys_info(void);
 extern uint64 sys_pgaccess(void);
+extern uint64 sys_pgdirty(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -147,6 +148,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_trace]   sys_trace,
 [SYS_sysinfo] sys_info,
 [SYS_pgaccess] sys_pgaccess,
+[SYS_pgdirty] sys_pgdirty,
 };
 
 static char* syscall_names[] = {
@@ -174,6 +176,7 @@ static char* syscall_names[] = {
   [SYS_trace]   "trace",
   [SYS_sysinfo] "sysinfo",
   [SYS_pgaccess] "pgaccess",
+  [SYS_pgdirty] "pgdirty",
 };
 
 _Static_assert(NELEM(syscalls) == NELEM(syscall_names), "syscalls and syscall_names count do not match.");

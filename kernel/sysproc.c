@@ -117,8 +117,11 @@ sys_info(void) {
   return copyout(myproc()->pagetable, arg_addr, (char*)&info, sizeof(info));
 }
 
-uint64
-sys_pgaccess(void) {
+/*
+  pgflagcheck checks if the specified flag is set in a range of pages. clears the flag if clear is true
+*/
+static uint64
+pgflagcheck(int flag, int clear) {
   uint64 page_start, page_end, curr_page;
   uint64 result_addr;
   int numpages, result = 0;
@@ -155,12 +158,25 @@ sys_pgaccess(void) {
       continue;
     }
 
-    if (*pte & PTE_A) { //maybe only check if it has been accessed?
+    if (*pte & flag) { //check if flag bit is set?
       result = result | (1 << i);
-      *pte = *pte & ~PTE_A; //clear access bit
+
+      if (clear){
+        *pte = *pte & ~flag; //clear access bit
+      }
     }
   }
   
   copyout(pagetable, result_addr, (char*) &result, sizeof(uint));
   return 0;
+}
+
+uint64
+sys_pgaccess(void) {
+  return pgflagcheck(PTE_A, 1);
+}
+
+uint64
+sys_pgdirty(void) {
+  return pgflagcheck(PTE_D, 1);
 }

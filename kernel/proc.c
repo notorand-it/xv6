@@ -485,6 +485,8 @@ scheduler(void)
         p->state = RUNNING;
         c->proc = p;
         swtch(&c->context, &p->context);
+        // After this switch i.e ret in swtch.S, the next instruction executed will be the process's return address, p->context.ra
+        // see allocproc() to set what the process's ra (return address) and sp (stack pointer) are set to
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.

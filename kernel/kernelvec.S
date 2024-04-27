@@ -94,21 +94,25 @@ kernelvec:
 .align 4
 timervec:
         # start.c has set up the memory that mscratch points to:
+        # This is a breakdown of scratch as an array of bytes char scratch[40] as oppose to the actual definition in start.c uint64 scratch[5]
+        # uint64 scratch[5] translates to char scratch[40] because uint64 * 5 = 320 bits = 40 bytes
         # scratch[0,8,16] : register save area.
         # scratch[24] : address of CLINT's MTIMECMP register.
         # scratch[32] : desired interval between interrupts.
         
+        # Save the values of registers a1 a2 a3 into the scratch
+        # Swap a0 and mscratch to save the value of a0 into mscratch and the value of mscratch into a0
         csrrw a0, mscratch, a0
-        sd a1, 0(a0)
-        sd a2, 8(a0)
-        sd a3, 16(a0)
+        sd a1, 0(a0)  # scratch[0] = a1, working with scratch as uint64 scratch[5]
+        sd a2, 8(a0)  # scratch[1] = a2
+        sd a3, 16(a0) # scratch[2] = a3
 
         # schedule the next timer interrupt
         # by adding interval to mtimecmp.
-        ld a1, 24(a0) # CLINT_MTIMECMP(hart)
-        ld a2, 32(a0) # interval
+        ld a1, 24(a0) # CLINT_MTIMECMP(hart) aka a1 = scratch[3]
+        ld a2, 32(a0) # interval aka a2 = scratch[4]
         ld a3, 0(a1)
-        add a3, a3, a2
+        add a3, a3, a2 
         sd a3, 0(a1)
 
         # arrange for a supervisor software interrupt
@@ -116,6 +120,8 @@ timervec:
         li a1, 2
         csrw sip, a1
 
+        # restore the initial values of registers a1 a2 a3 from the scratch
+        # swap mscratch and a0 to restore their initial values.
         ld a3, 16(a0)
         ld a2, 8(a0)
         ld a1, 0(a0)
