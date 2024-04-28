@@ -1,0 +1,157 @@
+RISV Sv39 -> 27 bits PPN, 12 bits offset in page. So 2^12 is 4096. A page is 4096 bytes so we will have 2^12 offsets for each byte in a page.
+PPN -> Physical page number. This is basically the address of a page in physical memory. Think about it as physical memory(RAM) is also divided in pages by the kernel so each of these pages has an address. These addresses are page align, so must be a multiple of 4096 in xv6 case.
+PTE -> Page table entry. It consists of 44 bits PPN and 10 bits flags.
+PA -> Physical address. This is basically address in memory. They are 56 bits. 44 bits PPN and 12 bits offset.
+	- For the physical address of a page/page table, 44 bits PPN is read from any level 2-0 while the remaining 12 bits will be 0s since page addresses are page aligned. 
+	- For the physical address of a virtual address, 44 bits PPN is read from the level 0 PTE found after a page table walk, the remaining 12 bits is from the lower bits of the virtual address mapped to the physical address. 
+VA -> Virtual address. This is the address known to the user process. 
+	They are 39 bits. 
+	Each virtual address is mapped to a physical address. 
+	Multiple processes can have the same virtual addresses but these virtual addresses might be mapped to different physical address.
+Pagetable walk -> RISC Sv39 has a 3 level tree of page tables. The goal of this walk is to get the physical address of the page a virtual address's mapped physical address will be in.
+	Root page table/ Level 2 page table -> the root of the tree. 
+		- It serves as a directory of 512 page entries that each contain the address of a level 1 page table.
+		- The higher 9 bits of the virtual address is used to index into this page table to find the page entry to be selected at this level.
+		- Each page entry contains 44 bits PPN and 10 bits flag. The 44 bits PPN will be left shifted by 12 (PPN << 12) to give a 56 bits physical address to the level page table.
+		- One thing to note about a PTE is it is just a pointer i.e memory address. It needs to be deferenced in order to read/write it's content. e.g *pte = 44 bits PPN + 10 bits flags (54 bits unsigned integer)
+		- Only the valid bit will be set in the 10 flag bit
+	Level 1 page table -> This is the table pointed tp by the PPN in the selected page entry in the level 2 page table. 
+		- It will also contain 512 page entries that each contain the address of a level 0 page table . 
+		- The next 9 bits in the higher bits of VA is used to index into this page table to select a page entry.
+		- Similar to level 2, the PTEs here will contain 44 bits PPN and 10 bits flags with only the valid bit set. 
+	Level 0 page table -> Page table read from the selected page entry in a level 1 page table. It will contain 512 page entries. These page entries will contain a 44 PPN and a 10 bit flags 
+
+Convert PA to PTE -> When saving a PA in a PTE (usually due to VA to PA mapping), we right shift the PA by 12 bits to remove the offset (This should be fine since the PAs gotten from kalloc are page aligned so the last 12 bits are going to be 0s), then we left shift it by 10 bits for PTE flags. So uint64 pte = (PA >> 12) << 10. We can then set the appropriate flags for this PTE most especially the valid bit flag. 
+
+Convert PTE to PA -> To read a PA from a PTE, we right shift the 10 bits flags then left shift 10 bits. So uint64 pa = (PTE >> 10) << 12. If the PTE is a level 0 PTE, the final 12 bits of the PA will be gotten from the virtual address.
+
+Some data structures: 
+	- pagetable_t is a pointer of type uint64. It points to the 1st address in a memory chunk of 4096 bytes. It means using pointer arithmetics, *(pagetable_t + x) or pagetable_t[x] points to a 64 bits/8 bytes integer in the 4096 memory chunk. So we can have 512 64 bits integers in this 4096 memory chunk.
+	- pte_t is a uint64 integer. It is one of the elements in pagetable_t. so pagetable_t[x] == pte_t and pte_t* pte = &pagetable_t[x] same as how int* ints, ints[x] == int and int* int = &ints[x]
+
+To get read ap PTE -> uint64 pte = pagetable_t[x]
+To store a PTE -> pagetable_t[x] = uint64 pte
+Get a pointer to a PTE -> uint64* pte = &pagetable_t[x]
+
+vm.c notes
+
+kvm mean kernel memory
+uvm means user memory
+
+Page numbers should be multiples of PGSIZE
+To ensure this, we have PGROUNDUP AND PGROUNDDOWN
+PGROUNDUP rounds up a number to the nearest multiple of PGSIZE. It is an equivalent of ceil but for PGSIZE.
+For example, PGSIZE=4096, PGROUNDUP(1000) will give 4096, PGROUNDUP(5000) will give 8192.
+It very useful when we want to get the address of the next page after the page the given input address is in
+
+PGROUNDDOWN on the other hand rounds a number down to the nearest multiple of PGSIZE. It is the equivalent of floor but for PGSIZE.
+For example, PGSIZE=4096, PGROUNDDOWN(1000) will give 0, PGROUNDDOWN(5000) will give 4096.
+It is useful when we want to get the address of the page the given input address is in.
+
+uvmcreate -> Creates a pagetable for a user process and initializes all it's bytes to 0
+
+uvmalloc -> allocates more pages to the pagetable of a process. Basically increases the pages in the virtual memory of a process. It does this by create as many pages as required for the range of old size to new size and maps these pages to physical memory allocated by kalloc().
+
+uvmdealloc -> unmaps pages from the pagetable of a process. It does this by finding the page tables in the range of new size and old size. It then unmaps these pages by walking the 3 level page tree of the process's pagetable and freeing the physical memory of each page using kfree() and setting the valid bit of the PTEs to 0.
+
+mappages -> maps pages in a pagetable to physical pages allocated by kalloc
+uvmunmap -> Does the opposite of mappages. It unmaps pages in a pagetable. Does this by walking the pagetable to find the given page, frees the physical memory allocated to it with kfree and then sets it's PTE to 0. This will ensure all it's flags including the valid bit is set to 0, it also ensures the PPN is 0.
+
+kvminit and kvmmake -> This is where the kernels pagetable is defined and all it's addresses are mapped to defined physical addresses.
+	- IO addresses are mapped so their VA is equal to the PA
+	- The kernel's text and data addresses are also uses direct mapping so their VAs and PAs are equal
+	- Same for the addresses between the end of the kernel's text-data and the PHYSTOP. They will all use direct mapping
+	- The trampoline VA will be MAXVA-PGSIZE and will be mapped to the address of trampoline.S code
+	- The kernel stacks will be right beneath the trampoline virtual address and will be mapped to physical addresses allocated by kalloc 
+
+kvminithart -> This is where paging is enabled during booting. 
+	- This will be called after the kernel's memory layout has been defined and it's virtual addresses have been mapped one to one with the physical address. 
+	- It is important this is done before paging is enabled to ensure the addresses in the kernel's virtual memory are equal to the physical address.
+
+proc.c notes
+
+procinit -> initializes the state of all the processes in proc array during boot time. There are 64 processes. It sets their state to UNUSED and sets the address of their kstack.
+
+trapframe -> When a process is interupted by a trap, the kernel needs to save the process's CPU context. 
+	- Things like the current PC, the values in the registers, the current stack pointer, etc. 
+	- This ensures that after the trap has been handled by one the trap handlers, the kernel can resume the process from it's last state before it was interupted.
+	- The trapframe is beneath the trampoline in a process memory layout
+	- The permission on the page for a trapframe is Read and Write only allowed in kernel mode. This ensures the data in this page cannot only be read or written in kernel mode.
+
+trampoline -> The is a page allocated at the top of the virtual memory layout. It is shared by both the user and kernel memory layout.
+ 	- It contains executable code called the trampoline code and it is executable by both user and kernel modes. It serves as a landing zone for system calls; user-mode code jumps to the trampoline, which then safely transitions into kernel mode to execute the system call. kernel-mode code will also jump to the trampoline to transition back to user mode.
+ 	- The permission on the page for this code is Read and executable only accessible in kernel mode. This ensures the code is secured from user space manipulation.
+
+allocproc -> Finds an UNUSED process, set it's state to USED, allocates a page for it's trapframe with kalloc, creates a pagetable for the process using proc_pagetable, sets the return address reg ra to forkexit and the stack point sp tp kstack + PGSIZE in the process context, then returns the newly allocated process.
+
+proc_pagetable -> creates a pagetable for a process using uvmcreate, maps the trampoline address to the same address as mapped in the kernel's pagetable then the trapframe's virtual memory which will be below the trampoline and will be mapped to the a page allocated by kalloc. 
+
+freeproc -> frees the page allocated to the process's trapframe, frees the process pagetable using proc_freepagetable, sets it's state to UNUSED and sets all data in the proc struc to 0
+
+proc_freepagetable -> unmaps the process trampoline and trapframe VAs, frees the pagetable using uvmfree
+
+uvmfree -> free all the leaf pages in the user pagetable. Calls uvmunmap to unmap virtual addresses from 0 -> process memory size page by page. So this basically frees all the pages in the user process virtual memory.
+
+uvmunmap -> find the ptes for the range of VAs provided, will free up the physical address mapped to the va if requested, then set the pte to 0.
+
+freewalk -> This then frees all the ptes and pages in the pagetable excluding the leaf nodes which should have been freed by uvmunmap.
+
+
+Next up
+How are pages mapped during user process creation and how are they freed/unmapped when processes are exit or get killed? Answered
+
+page table lab
+Breakdown of the virtual memory of the init process pid 1 running sh program (sh.c)
+xv6 kernel is booting
+hart 1 starting
+hart 2 starting
+page table 0x0000000087f6b000
+..0: pte 0x0000000021fd9c01 pa 0x0000000087f67000
+.. ..0: pte 0x0000000021fd9801 pa 0x0000000087f66000
+.. .. ..0: pte 0x0000000021fda01b pa 0x0000000087f68000 text
+.. .. ..1: pte 0x0000000021fd9417 pa 0x0000000087f65000 data
+.. .. ..2: pte 0x0000000021fd9007 pa 0x0000000087f64000 stack guard
+.. .. ..3: pte 0x0000000021fd8c17 pa 0x0000000087f63000 stack
+..255: pte 0x0000000021fda801 pa 0x0000000087f6a000
+.. ..511: pte 0x0000000021fda401 pa 0x0000000087f69000
+.. .. ..509: pte 0x0000000021fdcc13 pa 0x0000000087f73000 usyscall
+.. .. ..510: pte 0x0000000021fdd007 pa 0x0000000087f74000 trapframe
+.. .. ..511: pte 0x0000000020001c0b pa 0x0000000080007000 trampoline
+init: starting sh
+
+Virtual memory of _sh program
+(qemu) info mem
+vaddr            paddr            size             attr
+---------------- ---------------- ---------------- -------
+0000000000000000 0000000087f58000 0000000000001000 r-x---- NULL page
+0000000000001000 0000000087f55000 0000000000001000 r-xu-a- text
+0000000000002000 0000000087f54000 0000000000001000 r-xu--- text
+0000000000003000 0000000087f53000 0000000000001000 rw-u-ad data
+0000000000004000 0000000087f52000 0000000000001000 rw----- stack guard
+0000000000005000 0000000087f51000 0000000000001000 rw-u-ad stack
+0000003fffffd000 0000000087f72000 0000000000001000 r--u--- usyscall
+0000003fffffe000 0000000087f6c000 0000000000001000 rw---ad trapframe
+0000003ffffff000 0000000080007000 0000000000001000 r-x--a- trampoline
+
+user process memory layout
+text
+data
+stack guard
+stack
+heap
+trapframe
+trampoline
+
+kernel memory layout
+mmio
+text -> starts at 0x80000000
+data
+kernel stack for each process. each stack has a stack guard
+trampoline
+
+Homework
+- Your job is to implement pgaccess(), a system call that reports which pages have been accessed
+- The system call takes three arguments
+	- the starting virtual address of the first user page to check
+	- the number of pages to check
+	- a user address to a buffer to store the results into a bitmask where each bit represents a page and the first page is the LSB

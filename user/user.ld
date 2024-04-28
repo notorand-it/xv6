@@ -1,5 +1,5 @@
 OUTPUT_ARCH( "riscv" )
-ENTRY( _main )
+ENTRY( _main ) /* ensures that the entry of every user program is the _main wrapper in ulib.c. every user program is compiled with ulib.o */
 
 
 SECTIONS

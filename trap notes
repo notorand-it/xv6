@@ -1,0 +1,136 @@
+Jottings
+3 kinds of events that can make a CPU pause processing instructions and force a transfer of control to a special code to handle the event are:
+- Device interupts - disk read/write complte
+- Exceptions like page fault
+- ecall instruction for system calls 
+
+These events can be called traps and the event handlers are called vectors.
+The idea is when there is a trap, the kernel should be able to handle the trap, then continue the execution of the interrupted process. From the perspective of the process, it should look like nothing happens.
+e.g user process executing a add instruction -> device interrupts happens -> processor switch mode to supervisor then executes trap handler -> trap handler preserves the state of the user process before handling the trap -> trap handler handles the trap -> trap restores the state of user process and set pc to continue user process from where it stopped before the device interrupt
+
+In start.c these were used to switch from machine mode to supervisor mode 
+mstatus -> machine status register. Stores the following
+	mpp -> machine previous priviledge (can be machine, supervisor or user). It indicates the mode the trap came from and determines what mode to return to after the trap via mret
+	mie -> enable device interrupt
+
+mepc -> machine exception program counter. Used to specify the address of the instruction to jump to after mret	
+mscratch -> points to some data structure set by the kernel. Serves as a scratch pad/space to store current register values before handling a trap so the values can be restored to the registers after completing the trap handling. The scratch may also contain some data that can be used by the trap handler.
+
+mret -> return from code running in machine mode. PC will be set to the address in mepc while the priviledge level will change to whatever level is specified in mpp. 
+In start.c, the code runs in machine mode, mpp is set to supervisor priviledge and mepc is set to main() from main.c
+
+supervisor
+sstatus -> supervisor status register. Stores the following
+	spp -> supervisor previous priviledge (can be supervisor or user)
+	sie -> enable device interrupt
+	spie -> supervisor previous interrupt enabled	
+
+sepc -> supervisor exception program counter. Used to specify the address of the instruction to jump to after sret
+sscratch -> points to the trapframe struct of the current process and can be used to save the state/register values before handling a trap so these values can be restored after the trap handling is done.
+
+sret -> return from code running in supervisor mode. PC will be set to the address in sepc while the priviledge level will change to whatever level is specified in spp.
+
+stvec -> register that contains the address of a trap handler
+scause -> register that contains the reason for a trap
+
+How the riscv hardware/processor handles traps
+- if it is a device interrupt and SIE bit is clear (meaning device interrupts are disabled), do nothing
+- else continue with steps below
+- Disable interrupts by clearing the SIE bit in sstatus
+- copy pc to sepc // to preserve the pc of the interrupted user process
+- save the current mode (user or supervisor) in the spp bit in sstatus // to know what mode to switch back to after the trap is handled
+- set scause to reflect the cause of the trap
+- set the mode to supervisor
+- copy stvec to pc // for traps from user space, this will contain address to uservec
+- execute instruction in pc
+
+How traps from user space are handled by uservec
+- Gets the address of user process trapframe from sscratch register by swapping a0 and sscratch, so the user's value for a0 is now stored in sscratch while the process's trapframe address is now stores in a0.
+- Reads all registers except a0 (because if not longer contains the user's actual value due to the swap above) and saves their values into the process's trapframe using the trapframe address in a0. The user's actual value of a0 is read from sscratch and store in trapframe->a0
+- switch to the kernel pagetable by reading the kernel pagetable address from the trapframe and set the satp register to this value
+- reads the address of usertrap from the trapframe and calls usertrap
+
+u->k page  kpage       kpage          k->u page  
+kmode	   kmode       kmode          kmode
+trampoline trap        trap           trampoline
+uservec -> usertrap -> usertrapret -> userret
+
+usertrap details/workings
+- It determines the cause of the trap, handles it and returns
+- first, changes svtec to kernelvec so any trap while in the kernel will be handled by kernelvec
+- saves sepc because it might be modified if the process has to yield the CPU due to a timer interrupt
+- Based on the type of trap
+- if syscall, calls syscall, adds 4 to sepc so it points to the next instruction after ecall. This is because riscv leaves pc to point to the same ecall instruction even after executing the ecall instruction. Ideally after executing an instruction, pc should be updated to the next instruction. Adding 4 to sepc will ensure the user process continues to it's next instuction as the trap started by the ecall instruction has been handled
+- if device interrupt, calls devinstr
+- if exception, kills the user process
+- Checks if the user process was killed or should yield the cpu
+- calls usertrapret to start the process of returning to user space
+
+usertrapret workings
+- set svtec back to uservec so traps in the user space will be handled by uservec
+- sets sepc to the saved user prgram counter
+- calls userret and pass in the user process's trapframe and pagetable as args via registers a0 and a1
+
+userret workings (args a0 -> trapframe, a1 -> process pagetable)
+- switch to user process pagetable by setting satp to the address read from a1
+- copy p->trapframe->a0 into sscratch
+- restore the register values of the process before the trap
+	- copy all register values other than a0 from p->trapframe into their equivalent registers
+	- swap sscratch and a0 so a0 = p->trapframe->a0 while sscratch = trapframe to be used during future trap handling
+- sret to return to sepc and switch from supervisor to user mode. The user process continues it's intructions in user space from this point
+
+types of page faults
+- load, store and instruction page faults. There is a fault if the address used in these operations cannot be translated
+- scause indicates the type of page fault that occurred
+- stval contains the address that could not be translated
+
+user trap handling code workthrough. 
+- starts at uservec since this is the set handler (via stvec) for traps that occur in user mode
+
+- uservec in trampoline.S
+ - backup all user registers into trapframe before handling trap
+	 - save reg a0 in sscratch reg. It will be saved later in the trapframe
+	 - store TRAPFRAME into a0. a0 = TRAPFRAME. TRAPFRAME is a constant uint64 that is the vaddr of every process' trapframe
+	 - save all user registers except a0 into the trapframe(now in a0 reg). 
+	 	- a0's actual value is in sscratch and needs to also be stored in the trapframe.
+	 	- read initial value of a0 from sscratch, store in t0 then store in the trapframe
+ - switch to kernel page
+ 	- get the kernel's pagetable from p->trapframe->kernel_satp, save in t1
+ 	- set the pagetable register equal to t1 to change from user table to kernel table. csrw satp, t1 
+ - invoke usertrap()
+ 	- get the address of usertrap() from p->trapframe->kernel_trap, save in t0
+ 	- invoke usertrap() by jumping to t0
+
+- usertrap() in trap.c
+ - set trap handler register (stvec) to kernelvec to help handle any trap while in kernel mode
+ - save sepc in trapframe
+ - if scause == 8 meaning it's a syscall interrupt (from ecall instr)
+ 	- increase sepc in trapframe by 4 because risvc sets sepc to the address of the ecall instr but we need it to be the address of the next instr so after an sret, the user process will continue from the instr after the ecall and not the ecall again
+ 	- enable interrupts
+ 	- call syscall to execute the appropriate syscall
+ - if it is a timer interrupt
+ 	- yield CPU
+ - if it is an unknown device interrupt, treat it as an exception and kill the process
+ - call usertrapret()
+
+- usertrapret() in trap.c
+	- disable interrupts
+	- set trap handler register (stvec) back to uservec
+	- prepare registers (sstatus and sepc) for sret
+		- important flags/register to update
+			- sstatus flags
+				- spp for mode to switch to after sret
+				- spie to decide if interrupt should be enabled after sret
+			- sepc specify what instruction to execute after sret. basically what will be the value of pc after sret
+		- set sstatus spp to user mode so sret will switch to user mode
+		- set sstatus spie to enable interrupts when we switch to user mode via sret
+		- set sepc from value store in trapframe
+	- call userret and pass in the user pagetable as argument. userret(pagetable)
+
+- userret in trampoline.S
+	- switch to user pagetable
+	- restore all user process registers from the trapframe
+	- execute sret instruction to switch back to user mode and resume user code execution from sepc
+		- this will switch to user mode
+		- enable interrupts in user mode
+		- set pc to sepc then the processor will execute whatever is in pc

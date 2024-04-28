@@ -88,8 +88,8 @@ pgdirty_test()
   buf[PGSIZE * 27] += 1;
   buf[PGSIZE * 31] += 1;
 
-  printf("buf:20 %d\n", buf[PGSIZE * 20]); //read-only operation. dirty bit should not be set 
-  
+  printf("buf:20 %d, address %x\n", buf[PGSIZE * 20], &buf[PGSIZE * 20]); //read-only operation. dirty bit should not be set 
+
   if (pgdirty(buf, 32, &dbits) < 0)
     err("pgdirty failed");
   if (dbits != ((1 << 0) | (1 << 5) | (1 << 6) | (1 << 27) | (1 << 31)))
