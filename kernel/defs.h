@@ -66,6 +66,13 @@ void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
 
+// dmsgbuff.c
+void dmsg_buff_init(void);
+void putb(char);
+void pr_msg_int(int, int, int);
+void pr_msg_ptr(uint64);
+void pr_msg(const char *fmt, ...);
+
 // log.c
 void            initlog(int, struct superblock*);
 void            log_write(struct buf*);
