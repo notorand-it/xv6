@@ -28,8 +28,8 @@ void check_malloc(void *ptr) {
 
 void check_open(int fd, void* mem_needs_to_be_freed) {
     if (fd < 0) {
-        raise_err("Error when opening file.\n");
         free(mem_needs_to_be_freed);
+        raise_err("Error when opening file.\n");
     }
 }
 
