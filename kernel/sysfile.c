@@ -85,7 +85,7 @@ sys_write(void)
   struct file *f;
   int n;
   uint64 p;
-  
+
   argaddr(1, &p);
   argint(2, &n);
   if(argfd(0, 0, &f) < 0)
@@ -301,6 +301,18 @@ create(char *path, short type, short major, short minor)
   return 0;
 }
 
+// Function to remove the last component of a path
+void trim_last_component(char* path) {
+    int index = strlen(path);
+    while (index >= 0 && path[index] != '/') {
+        path[index] = 0;
+        index--;
+    }
+    if (index > 0) {
+        path[index] = 0;
+    }
+}
+
 uint64
 sys_open(void)
 {
@@ -327,7 +339,55 @@ sys_open(void)
       end_op();
       return -1;
     }
+    // Buffer to store the path copy
+    char resolved_path[MAXPATH];
+    memmove(resolved_path, path, strlen(path));
     ilock(ip);
+    // Resolve symbolic links if O_NOFOLLOW is not set
+    if (!(omode & O_NOFOLLOW)) {
+        int symlink_count = 0;
+
+        // Follow symbolic links
+        while (ip->type == T_SYMLINK) {
+            // Trim the last component from the resolved path
+            trim_last_component(resolved_path);
+
+            // Read the symbolic link content
+            char symlink_content[MAXPATH];
+            readi(ip, 0, (uint64)symlink_content, 0, ip->size);
+            symlink_content[ip->size] = 0;
+
+            // Handle relative paths
+            if (symlink_content[0] != '/') {
+                if (strlen(resolved_path) != 0) {
+                    resolved_path[strlen(resolved_path)] =  '/';
+                }
+                memmove(resolved_path + strlen(resolved_path), symlink_content, ip->size);
+                memmove(symlink_content, resolved_path, strlen(resolved_path));
+            } else {
+                memmove(resolved_path, symlink_content, ip->size);
+                resolved_path[ip->size] = 0;
+            }
+
+            // Unlock and release the current inode
+            iunlockput(ip);
+
+            // Resolve the new path to an inode
+            if ((ip = namei(symlink_content)) == 0) {
+                end_op();
+                return -1;
+            }
+
+            symlink_count++;
+            if (symlink_count > RECLIMIT) {
+                end_op();
+                return -1;
+            }
+
+            // Lock the new inode
+            ilock(ip);
+        }
+    }
     if(ip->type == T_DIR && omode != O_RDONLY){
       iunlockput(ip);
       end_op();
@@ -368,6 +428,85 @@ sys_open(void)
   end_op();
 
   return fd;
+}
+
+// Function to create a symbolic link
+uint64 sys_symlink(void) {
+    char target[MAXPATH];
+    char filename[MAXPATH];
+    struct inode* ip;
+    int ft, ff, wf;
+    // Retrieve arguments for the target path and the filename
+    if ((ft = argstr(0, target, MAXPATH)) < 0) {
+        return -1;
+    }
+    if ((ff = argstr(1, filename, MAXPATH)) < 0) {
+        return -1;
+    }
+
+    begin_op();
+
+    // Create a new inode for the symbolic link
+    if ((ip = create(filename, T_SYMLINK, 0, 0)) == 0) {
+        end_op();
+        return -1;
+    }
+
+    // Set the inode type to symbolic link and write the target path into it
+    if ((wf = writei(ip, 0, (uint64)target, 0, strlen(target))) != ft) {
+        iunlockput(ip);
+        end_op();
+        return -1;
+    }
+
+    // Unlock and put the inode
+    iunlockput(ip);
+    end_op();
+
+    return 0;
+}
+
+// Function to read the target of a symbolic link
+uint64 sys_readlink(void) {
+    char filename[MAXPATH];
+    struct inode* ip;
+    char* buf;
+    uint64 b;
+
+    // Retrieve arguments for the filename and the buffer address
+    if (argstr(0, filename, MAXPATH) < 0) return -1;
+
+    argaddr(1, &b);
+    buf = (char*)b;
+
+    begin_op();
+
+    // Resolve the filename to an inode
+    if ((ip = namei(filename)) == 0) {
+        end_op();
+        return -1;
+    }
+
+    // Lock the inode and read the target path from it
+    ilock(ip);
+    if (ip->type != T_SYMLINK) {
+        iunlockput(ip);
+        end_op();
+        return -1;
+    }
+
+    int r;
+    if((r = readi(ip, 1, (uint64)buf, 0, ip->size)) < 0) {
+        iunlock(ip);
+        end_op();
+        return -1;
+    }
+
+    // Unlock the inode
+    iunlock(ip);
+    end_op();
+
+    return 0;
 }
 
 uint64
@@ -412,7 +551,7 @@ sys_chdir(void)
   char path[MAXPATH];
   struct inode *ip;
   struct proc *p = myproc();
-  
+
   begin_op();
   if(argstr(0, path, MAXPATH) < 0 || (ip = namei(path)) == 0){
     end_op();
