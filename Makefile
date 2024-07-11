@@ -84,8 +84,8 @@ $U/initcode: $U/initcode.S
 	$(OBJCOPY) -S -O binary $U/initcode.out $U/initcode
 	$(OBJDUMP) -S $U/initcode.o > $U/initcode.asm
 
-tags: $(OBJS) _init
-	etags *.S *.c
+tags: $(OBJS) $U/_init
+	etags {$K,$U}/*.S {$K,$U}/*.c {$K,$U}/*.h
 
 ULIB = $U/ulib.o $U/usys.o $U/printf.o $U/umalloc.o
 
