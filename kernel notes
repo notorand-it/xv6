@@ -133,6 +133,18 @@ vaddr            paddr            size             attr
 0000003fffffe000 0000000087f6c000 0000000000001000 rw---ad trapframe
 0000003ffffff000 0000000080007000 0000000000001000 r-x--a- trampoline
 
+Sections of _sh program
+riscv64-unknown-elf-objdump -p user/_sh
+user/_sh:     file format elf64-littleriscv
+
+Program Header:
+0x70000003 off    0x000000000000befb vaddr 0x0000000000000000 paddr 0x0000000000000000 align 2**0
+         filesz 0x0000000000000047 memsz 0x0000000000000000 flags r--
+    LOAD off    0x0000000000001000 vaddr 0x0000000000001000 paddr 0x0000000000001000 align 2**12
+         filesz 0x0000000000002000 memsz 0x0000000000002000 flags r-x
+    LOAD off    0x0000000000003000 vaddr 0x0000000000003000 paddr 0x0000000000003000 align 2**12
+         filesz 0x0000000000000010 memsz 0x0000000000000098 flags rw-
+
 user process memory layout
 text
 data

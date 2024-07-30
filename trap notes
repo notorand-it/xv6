@@ -134,3 +134,13 @@ user trap handling code workthrough.
 		- this will switch to user mode
 		- enable interrupts in user mode
 		- set pc to sepc then the processor will execute whatever is in pc
+
+csrr - read
+cswr - write
+csrw - swap
+
+stacktrace image
+chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://pdos.csail.mit.edu/6.828/2021/lec/l-riscv-slides.pdf 
+fp/s0 register: the top of the current frame
+sp - bottom of the stack
+ra - return address
