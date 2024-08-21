@@ -12,5 +12,7 @@ int main(int argc, char *argv[])
 {
   printf("Hello from my test case in xv6\n");
 
+  ps();
+
   exit(0);
 }
