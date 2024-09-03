@@ -27,10 +27,10 @@ Stephen Tu, Pablo Ventura, Xi Wang, Keiichi Watanabe, Nicolas
 Wolovick, wxdao, Grant Wu, Jindong Zhang, Icenowy Zheng, and Zou Chang
 Wei.
 
+syscall
 The code in the files that constitute xv6 is
 Copyright 2006-2020 Frans Kaashoek, Robert Morris, and Russ Cox.
 
-ERROR REPORTS
 
 Please send errors and suggestions to Frans Kaashoek and Robert Morris
 (kaashoek,rtm@mit.edu). The main purpose of xv6 is as a teaching
