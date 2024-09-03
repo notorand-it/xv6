@@ -25,14 +25,12 @@ static struct {
 
 static char digits[] = "0123456789abcdef";
 
-static void
-printint(long long xx, int base, int sign)
-{
+static void printint(int xx, int base, int sign) {
   char buf[16];
   int i;
-  unsigned long long x;
+  uint x;
 
-  if(sign && (sign = (xx < 0)))
+  if (sign && (sign = xx < 0))
     x = -xx;
   else
     x = xx;
@@ -40,139 +38,175 @@ printint(long long xx, int base, int sign)
   i = 0;
   do {
     buf[i++] = digits[x % base];
-  } while((x /= base) != 0);
+  } while ((x /= base) != 0);
 
-  if(sign)
-    buf[i++] = '-';
+  if (sign) buf[i++] = '-';
 
-  while(--i >= 0)
-    consputc(buf[i]);
+  while (--i >= 0) consputc(buf[i]);
 }
 
-static void
-printptr(uint64 x)
-{
+static void printptr(uint64 x) {
   int i;
   consputc('0');
   consputc('x');
-  for (i = 0; i < (sizeof(uint64) * 2); i++, x <<= 4)
-    consputc(digits[x >> (sizeof(uint64) * 8 - 4)]);
+  for (i = 0; i < (sizeof(uint64) * 2); i++, x <<= 4) consputc(digits[x >> (sizeof(uint64) * 8 - 4)]);
 }
 
-// Print to the console.
-int
-printf(char *fmt, ...)
-{
+void info_with_color(char *fmt, ...) {
   va_list ap;
-  int i, cx, c0, c1, c2, locking;
+  int i, c, locking;
+  char *s;
+#ifndef LAB_SYSCALL_TEST
+  static const char *color = "\033[0;36m";
+  static const char *info = "[INFO] ";
+  static const char *rst_str = "\033[0m";
+#endif
+
+  locking = pr.locking;
+  if (locking) acquire(&pr.lock);
+
+  if (fmt == 0) panic("null fmt");
+
+#ifndef LAB_SYSCALL_TEST
+  for (i = 0; color[i] != 0; i++) {
+    consputc(color[i]);
+  }
+  for (i = 0; info[i] != 0; i++) {
+    consputc(info[i]);
+  }
+#endif
+
+  va_start(ap, fmt);
+  for (i = 0; (c = fmt[i] & 0xff) != 0; i++) {
+    if (c != '%') {
+      consputc(c);
+      continue;
+    }
+    c = fmt[++i] & 0xff;
+    if (c == 0) break;
+    switch (c) {
+      case 'd':
+        printint(va_arg(ap, int), 10, 1);
+        break;
+      case 'x':
+        printint(va_arg(ap, int), 16, 1);
+        break;
+      case 'p':
+        printptr(va_arg(ap, uint64));
+        break;
+      case 's':
+        if ((s = va_arg(ap, char *)) == 0) s = "(null)";
+        for (; *s; s++) consputc(*s);
+        break;
+      case '%':
+        consputc('%');
+        break;
+      default:
+        // Print unknown % sequence to draw attention.
+        consputc('%');
+        consputc(c);
+        break;
+    }
+  }
+
+#ifndef LAB_SYSCALL_TEST
+  for (i = 0; rst_str[i] != 0; i++) {
+    consputc(rst_str[i]);
+  }
+#endif
+
+  if (locking) release(&pr.lock);
+}
+
+// Print to the console. only understands %d, %x, %p, %s.
+void
+#ifdef TEST
+_printf(const char *filename, unsigned int line, char *fmt, ...)
+#else
+_printf(char *fmt, ...)
+#endif
+{
+#ifdef TEST
+  static const char *file_color = "\033[0;36m";
+  static const char *line_color = ":\033[0;35m";
+  static const char *content_color = "\t\033[0;32m";
+  static const char *rst_str = "\033[0m";
+#endif
+  va_list ap;
+  int i, c, locking;
   char *s;
 
   locking = pr.locking;
-  if(locking)
-    acquire(&pr.lock);
+  if (locking) acquire(&pr.lock);
 
+  if (fmt == 0) panic("null fmt");
+
+#ifdef TEST
+  for (i = 0; file_color[i] != 0; i++) {
+    consputc(file_color[i]);
+  }
+  for (i = 0; filename[i] != 0; i++) {
+    consputc(filename[i]);
+  }
+  for (i = 0; line_color[i] != 0; i++) {
+    consputc(line_color[i]);
+  }
+  printint(line, 10, 1);
+  for (i = 0; content_color[i] != 0; i++) {
+    consputc(content_color[i]);
+  }
+#endif
   va_start(ap, fmt);
-  for(i = 0; (cx = fmt[i] & 0xff) != 0; i++){
-    if(cx != '%'){
-      consputc(cx);
+  for (i = 0; (c = fmt[i] & 0xff) != 0; i++) {
+    if (c != '%') {
+      consputc(c);
       continue;
     }
-    i++;
-    c0 = fmt[i+0] & 0xff;
-    c1 = c2 = 0;
-    if(c0) c1 = fmt[i+1] & 0xff;
-    if(c1) c2 = fmt[i+2] & 0xff;
-    if(c0 == 'd'){
-      printint(va_arg(ap, int), 10, 1);
-    } else if(c0 == 'l' && c1 == 'd'){
-      printint(va_arg(ap, uint64), 10, 1);
-      i += 1;
-    } else if(c0 == 'l' && c1 == 'l' && c2 == 'd'){
-      printint(va_arg(ap, uint64), 10, 1);
-      i += 2;
-    } else if(c0 == 'u'){
-      printint(va_arg(ap, int), 10, 0);
-    } else if(c0 == 'l' && c1 == 'u'){
-      printint(va_arg(ap, uint64), 10, 0);
-      i += 1;
-    } else if(c0 == 'l' && c1 == 'l' && c2 == 'u'){
-      printint(va_arg(ap, uint64), 10, 0);
-      i += 2;
-    } else if(c0 == 'x'){
-      printint(va_arg(ap, int), 16, 0);
-    } else if(c0 == 'l' && c1 == 'x'){
-      printint(va_arg(ap, uint64), 16, 0);
-      i += 1;
-    } else if(c0 == 'l' && c1 == 'l' && c2 == 'x'){
-      printint(va_arg(ap, uint64), 16, 0);
-      i += 2;
-    } else if(c0 == 'p'){
-      printptr(va_arg(ap, uint64));
-    } else if(c0 == 's'){
-      if((s = va_arg(ap, char*)) == 0)
-        s = "(null)";
-      for(; *s; s++)
-        consputc(*s);
-    } else if(c0 == '%'){
-      consputc('%');
-    } else if(c0 == 0){
-      break;
-    } else {
-      // Print unknown % sequence to draw attention.
-      consputc('%');
-      consputc(c0);
+    c = fmt[++i] & 0xff;
+    if (c == 0) break;
+    switch (c) {
+      case 'd':
+        printint(va_arg(ap, int), 10, 1);
+        break;
+      case 'x':
+        printint(va_arg(ap, int), 16, 1);
+        break;
+      case 'p':
+        printptr(va_arg(ap, uint64));
+        break;
+      case 's':
+        if ((s = va_arg(ap, char *)) == 0) s = "(null)";
+        for (; *s; s++) consputc(*s);
+        break;
+      case '%':
+        consputc('%');
+        break;
+      default:
+        // Print unknown % sequence to draw attention.
+        consputc('%');
+        consputc(c);
+        break;
     }
-
-#if 0
-    switch(c){
-    case 'd':
-      printint(va_arg(ap, int), 10, 1);
-      break;
-    case 'x':
-      printint(va_arg(ap, int), 16, 1);
-      break;
-    case 'p':
-      printptr(va_arg(ap, uint64));
-      break;
-    case 's':
-      if((s = va_arg(ap, char*)) == 0)
-        s = "(null)";
-      for(; *s; s++)
-        consputc(*s);
-      break;
-    case '%':
-      consputc('%');
-      break;
-    default:
-      // Print unknown % sequence to draw attention.
-      consputc('%');
-      consputc(c);
-      break;
-    }
-#endif
   }
-  va_end(ap);
-
-  if(locking)
-    release(&pr.lock);
-
-  return 0;
+#ifdef TEST
+  for (i = 0; rst_str[i] != 0; i++) {
+    consputc(rst_str[i]);
+  }
+#endif
+  if (locking) release(&pr.lock);
 }
 
-void
-panic(char *s)
-{
+void panic(char *s) {
   pr.locking = 0;
   printf("panic: ");
-  printf("%s\n", s);
-  panicked = 1; // freeze uart output from other CPUs
-  for(;;)
+  printf(s);
+  printf("\n");
+  panicked = 1;  // freeze uart output from other CPUs
+  for (;;)
     ;
 }
 
-void
-printfinit(void)
-{
+void printfinit(void) {
   initlock(&pr.lock, "pr");
   pr.locking = 1;
 }
