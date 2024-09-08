@@ -89,3 +89,21 @@ uint64 sys_yield(void) {
   return 0;
 }
 
+uint64 sys_kthread_create(void) {
+  uint64 start_routine;
+  uint64 arg;
+  uint64 stack;
+  if (argaddr(0, &start_routine) < 0) return -1;
+  if (argaddr(1, &arg) < 0) return -1;
+  if (argaddr(2, &stack) < 0) return -1;
+  return kthread_create((void *)start_routine, (void *)arg, (void *)stack);
+}
+
+uint64 sys_kthread_wait(void) {
+  uint64 addr;
+  int flags;
+  if (argaddr(0, &addr) < 0) return -1;
+  if (argint(0, &flags) < 0) return -1;
+  kthread_wait(addr, flags);
+  return 0;
+}

@@ -103,4 +103,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  // thread-specific fields
+  int is_thread;               // if 1, it is a thread; 0 means a process
 };

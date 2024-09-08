@@ -38,3 +38,5 @@ entry("sleep");
 entry("uptime");
 entry("rename");
 entry("yield");
+entry("kthread_create");
+entry("kthread_wait");

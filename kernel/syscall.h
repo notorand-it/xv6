@@ -22,3 +22,5 @@
 #define SYS_close  21
 #define SYS_rename 22
 #define SYS_yield 23
+#define SYS_kthread_create 24
+#define SYS_kthread_wait 25
