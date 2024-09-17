@@ -115,6 +115,10 @@ int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
 
+// thread
+int kthread_create(void (*start_routine)(void*), void *arg, void *stack);
+int kthread_wait(uint64 addr, int flags);
+
 // swtch.S
 void            swtch(struct context*, struct context*);
 

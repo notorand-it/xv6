@@ -25,6 +25,10 @@ int sleep(int);
 int uptime(void);
 int rename(const char*);
 void yield(void);
+int thread_create(void (*start_routine)(void*), void *arg);
+int kthread_create(void (*start_routine)(void*), void *arg, void *stack);
+int thread_wait(void *addr, int flags);
+int kthread_wait(void *addr, int flags);
 
 // ulib.c
 int stat(const char*, struct stat*);
@@ -42,3 +46,4 @@ void free(void*);
 int atoi(const char*);
 int memcmp(const void *, const void *, uint);
 void *memcpy(void *, const void *, uint);
+

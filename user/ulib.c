@@ -1,4 +1,5 @@
 #include "kernel/types.h"
+#include "kernel/riscv.h"
 #include "kernel/stat.h"
 #include "kernel/fcntl.h"
 #include "user/user.h"
@@ -102,3 +103,16 @@ int memcmp(const void *s1, const void *s2, uint n) {
 }
 
 void *memcpy(void *dst, const void *src, uint n) { return memmove(dst, src, n); }
+
+int thread_create(void (*start_routine)(void *), void* arg)
+{
+  void* stack;
+  stack = malloc(PGSIZE);
+
+  return kthread_create(start_routine, arg, stack);
+}
+
+int thread_wait(void *addr, int flags)
+{
+  return kthread_wait(addr, flags);
+}

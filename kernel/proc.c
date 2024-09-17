@@ -305,25 +305,26 @@ void exit(int status) {
   struct proc *child;
   int i;
 
-  // print parent proc information
-  if (pp) {
-    printf("proc %d exit, parent pid %d, name %s, state %s\n",
-                p->pid, pp->pid, pp->name, states[p->state]);
-  } else {
-    printf("proc %d exit, parent pid -1, name %s, state %s\n",
-                p->pid, p->name, states[p->state]);
-  }
+  if (!p->is_thread){
+    // print parent proc information
+    if (pp) {
+      printf("proc %d exit, parent pid %d, name %s, state %s\n",
+                  p->pid, pp->pid, pp->name, states[p->state]);
+    } else {
+      printf("proc %d exit, parent pid -1, name %s, state %s\n",
+                  p->pid, p->name, states[p->state]);
+    }
 
-  // print child proc information
-  int child_num = 0;
-  for (i = 0; i < NPROC; i++) {
-    child = &proc[i];
-      if (child->parent == p) {
-        printf("proc %d exit, child %d, pid %d, name %s, state %s\n",
-                    p->pid, child_num++, child->pid, child->name, states[child->state]);
-      }
+    // print child proc information
+    int child_num = 0;
+    for (i = 0; i < NPROC; i++) {
+      child = &proc[i];
+        if (child->parent == p) {
+          printf("proc %d exit, child %d, pid %d, name %s, state %s\n",
+                      p->pid, child_num++, child->pid, child->name, states[child->state]);
+        }
+    }
   }
-
   if (p == initproc) panic("init exiting");
 
   // Close all open files.
@@ -647,5 +648,106 @@ void procdump(void) {
       state = "???";
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
+  }
+}
+
+int
+kthread_create(void (*start_routine)(void*), void *arg, void *stack){
+  int i, pid;
+  struct proc *np;
+  struct proc *p = myproc();
+
+  // Allocate process.
+  if ((np = allocproc()) == 0) {
+    return -1;
+  }
+  np->is_thread = 1;
+
+  // Copy user memory from parent to child.
+  if (uvmcopy(p->pagetable, np->pagetable, p->sz) < 0) {
+    freeproc(np);
+    release(&np->lock);
+    return -1;
+  }
+
+  np->sz = p->sz;
+
+  np->parent = p;
+
+  // copy saved user registers.
+  *(np->trapframe) = *(p->trapframe);
+
+  // Cause fork to return 0 in the child.
+  np->trapframe->a0 = 0;
+
+  // increment reference counts on open file descriptors.
+  for (i = 0; i < NOFILE; i++)
+    if (p->ofile[i]) np->ofile[i] = filedup(p->ofile[i]);
+  np->cwd = idup(p->cwd);
+
+  // set start_routine address
+  np->trapframe->epc = (uint64)start_routine;
+  np->trapframe->a0 = (uint64)arg;
+  np->trapframe->sp = (uint64)stack;
+
+  safestrcpy(np->name, p->name, sizeof(p->name));
+
+  pid = np->pid;
+
+  np->state = RUNNABLE;
+
+  release(&np->lock);
+
+  return pid;
+}
+
+int kthread_wait(uint64 addr, int flags) {
+  if(flags == 1) return -1;
+
+  struct proc *np;
+  int havekids, pid;
+  struct proc *p = myproc();
+
+  // hold p->lock for the whole time to avoid lost
+  // wakeups from a child's exit().
+  acquire(&p->lock);
+
+  for (;;) {
+    // Scan through table looking for exited children.
+    havekids = 0;
+    for (np = proc; np < &proc[NPROC]; np++) {
+      // this code uses np->parent without holding np->lock.
+      // acquiring the lock first would cause a deadlock,
+      // since np might be an ancestor, and we already hold p->lock.
+      if (np->parent == p && np->is_thread == 1) {
+        // np->parent can't change between the check and the acquire()
+        // because only the parent changes it, and we're the parent.
+        acquire(&np->lock);
+        havekids = 1;
+        if (np->state == ZOMBIE) {
+          // Found one.
+          pid = np->pid;
+          if (addr != 0 && copyout(p->pagetable, addr, (char *)&np->xstate, sizeof(np->xstate)) < 0) {
+            release(&np->lock);
+            release(&p->lock);
+            return -1;
+          }
+          freeproc(np);
+          release(&np->lock);
+          release(&p->lock);
+          return pid;
+        }
+        release(&np->lock);
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if (!havekids || p->killed) {
+      release(&p->lock);
+      return -1;
+    }
+
+    // Wait for a child to exit.
+    sleep(p, &p->lock);  // DOC: wait-sleep
   }
 }
