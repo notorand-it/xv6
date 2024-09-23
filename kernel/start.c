@@ -43,9 +43,6 @@ start()
   // keep each CPU's hartid in its tp register, for cpuid().
   int id = r_mhartid();
   w_tp(id);
-
-  // switch to supervisor mode and jump to main().
-  asm volatile("mret");
 }
 
 // ask each hart to generate timer interrupts.
