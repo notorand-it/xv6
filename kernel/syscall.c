@@ -145,3 +145,10 @@ syscall(void)
     p->trapframe->a0 = -1;
   }
 }
+// Inside syscall.c
+extern int sys_getfreemem(void);
+
+static int (*syscalls[])(void) = {
+    // Other system calls...
+    [SYS_getfreemem] sys_getfreemem,
+};
