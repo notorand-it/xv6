@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "mmu.h"
 
 uint64
 sys_exit(void)
@@ -90,4 +91,11 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+extern int kfreepages(void);  // Declaration of function that returns free pages
+
+int sys_getfreemem(void) {
+    // Calculate free memory in bytes, assuming PGSIZE is the size of each page
+    int free_pages = kfreepages();  // This function should return the number of free pages
+    return free_pages * PGSIZE;     // Return the free memory in bytes
 }
