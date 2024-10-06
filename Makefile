@@ -1,5 +1,7 @@
 K=kernel
 U=user
+T=tools
+
 
 OBJS = \
   $K/entry.o \
@@ -101,8 +103,13 @@ _%: %.o $(ULIB)
 	$(OBJDUMP) -S $@ > $*.asm
 	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $*.sym
 
-$U/usys.S : $U/usys.pl
-	perl $U/usys.pl > $U/usys.S
+# Compile usys generator, this replaces the usys.pl script
+$T/usys: $T/usys.c
+	gcc -Werror -Wall -I. -o $T/usys $T/usys.c
+
+# Generate usys.S
+$U/usys.S: $T/usys
+	$T/usys $U/usys.S
 
 $U/usys.o : $U/usys.S
 	$(CC) $(CFLAGS) -c -o $U/usys.o $U/usys.S
@@ -113,8 +120,8 @@ $U/_forktest: $U/forktest.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $U/_forktest $U/forktest.o $U/ulib.o $U/usys.o
 	$(OBJDUMP) -S $U/_forktest > $U/forktest.asm
 
-mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
-	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
+$T/mkfs: $T/mkfs.c $K/fs.h $K/param.h
+	gcc -Werror -Wall -I. -o $T/mkfs $T/mkfs.c
 
 # Prevent deletion of intermediate files, e.g. cat.o, after first build, so
 # that disk image changes after first build are persistent until clean.  More
@@ -140,8 +147,8 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 
-fs.img: mkfs/mkfs README $(UPROGS)
-	mkfs/mkfs fs.img README $(UPROGS)
+fs.img: $T/mkfs README $(UPROGS)
+	$T/mkfs fs.img README $(UPROGS)
 
 -include kernel/*.d user/*.d
 
@@ -149,8 +156,8 @@ clean:
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*/*.o */*.d */*.asm */*.sym \
 	$U/initcode $U/initcode.out $K/kernel fs.img \
-	mkfs/mkfs .gdbinit \
-        $U/usys.S \
+	$T/mkfs .gdbinit \
+    $T/usys $U/usys.S \
 	$(UPROGS)
 
 # try to generate a unique GDB port
