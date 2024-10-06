@@ -91,3 +91,11 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// return numbers of free Memory Pages
+// freepg() is implemented in kalloc.c
+uint64
+sys_freepg(void)
+{
+ return freepg();
+}
