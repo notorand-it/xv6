@@ -28,6 +28,8 @@ kinit()
 {
   initlock(&kmem.lock, "kmem");
   freerange(end, (void*)PHYSTOP);
+  // Output the start and end of Memory to see if change to RAM parameter in Makefile has an effect
+  printf("kinit: Memory start addr: %p,  Memory end addr:%p\n",end, (void*)PHYSTOP);
 }
 
 void
