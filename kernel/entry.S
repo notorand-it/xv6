@@ -9,7 +9,7 @@ _entry:
         # set up a stack for C.
         # stack0 is declared in start.c,
         # with a CPUSTACKSIZE-kilobytes stack per CPU as definied in param.h.
-        # sp = stack0 + (hartid * CPUSTACKSIZE)
+        # sp = stack0 + ((hartid + 1) * CPUSTACKSIZE)
         la sp, stack0
         li a0, 1024 * CPUSTACKSIZE
         csrr a1, mhartid
