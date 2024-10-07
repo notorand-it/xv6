@@ -10,6 +10,9 @@ volatile static int started = 0;
 void
 main()
 {
+  // Initialize an array to hold a waitcycle count per cpu.
+  uint waitcycle[NCPU];
+
   if(cpuid() == 0){
     consoleinit();
     printfinit();
@@ -34,10 +37,12 @@ main()
     __sync_synchronize();
     started = 1;
   } else {
-    while(started == 0)
-      ;
+    waitcycle[cpuid()]=0;
+    while(started == 0){
+      waitcycle[cpuid()]= waitcycle[cpuid()] + 1; //count the waitcylce per hart
+    }
     __sync_synchronize();
-    printf("hart %d starting\n", cpuid());
+    printf("hart %d starting: wait cycle %d\n", cpuid(), waitcycle[cpuid()] );
     kvminithart();    // turn on paging
     trapinithart();   // install kernel trap vector
     plicinithart();   // ask PLIC for device interrupts
