@@ -4,6 +4,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <libgen.h>
 
 #define stat xv6_stat  // avoid clash with host struct stat
 #include "kernel/types.h"
@@ -129,12 +130,9 @@ main(int argc, char *argv[])
 
   for(i = 2; i < argc; i++){
     // get rid of "user/"
-    char *shortname;
-    if(strncmp(argv[i], "user/", 5) == 0)
-      shortname = argv[i] + 5;
-    else
-      shortname = argv[i];
-    
+    char *filepath = strdup(argv[i]);
+    char *shortname = basename(filepath);
+
     assert(index(shortname, '/') == 0);
 
     if((fd = open(argv[i], 0)) < 0)
@@ -160,6 +158,7 @@ main(int argc, char *argv[])
       iappend(inum, buf, cc);
 
     close(fd);
+    free(filepath);
   }
 
   // fix size of root inode dir
