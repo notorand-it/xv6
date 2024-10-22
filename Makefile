@@ -140,7 +140,8 @@ UPROGS=\
 	$U/_xargs\
 	$U/_zombie\
 	$U/_pgtbltest\
-	$U/_call
+	$U/_call\
+	$U/_alarmtest
 
 fs.img: mkfs/mkfs README user/xargstest.sh $(UPROGS)
 	mkfs/mkfs fs.img README user/xargstest.sh $(UPROGS)

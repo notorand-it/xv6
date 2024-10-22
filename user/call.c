@@ -7,15 +7,15 @@ int g(int x) {
   return x+3;
 }
 
-int f(int x) {
+__attribute__((noinline)) int f(int x) {
   return g(x);
 }
 
-void main(void) {
-  printf("%d %d\n", f(8)+1, 13);
+void main(int argc, char* argv[]) {
+  sleep(0); // testing backtrace
+  printf("%d %d %d %s\n", f(8)+1, 13, argc, argv[0]);
   unsigned int i = 0x00646c72;
 	printf("H%x Wo%s", 57616, &i);
-  printf("x=%d y=%d", 3);
+  printf("x=%d y=%d\n", 3);
   exit(0);
 }
-
