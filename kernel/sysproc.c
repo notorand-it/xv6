@@ -7,6 +7,34 @@
 #include "proc.h"
 
 uint64
+sys_getppid(void){
+
+  return myproc()->parent ? myproc()->parent->pid:0;
+
+}
+
+uint64
+sys_getancestor(void)
+{
+    int n;
+    struct proc *p = myproc();
+
+    argint(0, &n);
+    if (n < 0) 
+        return -1;
+
+    while (n > 0 && p->parent != 0) {
+        p = p->parent;
+        n--;
+    }
+
+    if (n > 0 || p == 0) //si es mayor que 0 no hay ancestros
+        return -1;
+
+    return p->pid;
+}
+
+uint64
 sys_exit(void)
 {
   int n;
