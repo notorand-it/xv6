@@ -111,6 +111,7 @@ allocproc(void)
 {
   struct proc *p;
 
+
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
     if(p->state == UNUSED) {
@@ -139,6 +140,9 @@ found:
     release(&p->lock);
     return 0;
   }
+
+  p->priority = 0;
+  p->boost = 1;
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -446,6 +450,7 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
+  //struct proc *proc_seleccionado = 0;
 
   c->proc = 0;
   for(;;){
@@ -455,25 +460,39 @@ scheduler(void)
     intr_on();
 
     int found = 0;
+
+    //int prioridad_maxima = 10;
+    //proc_seleccionado = 0;
+
+
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
       if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
+
+        if(p->priority >= 9) { // si la prioridad llega a 9, cambiaremos el valor de boost a -1
+          p->boost = -1;
+        } else if(p->priority <= 0) { // si la prioridad llega a 0, cambiaremos el valor de boost a 1
+          p->boost = 1;
+        }
+        p->priority += p->boost;
+
+        printf("ejecutando proceso %s con PID %d y prioridad %d\n", p->name, p->pid, p->priority);
+
+        /// Switch to chosen process.  It is the process's job
+        /// to release its lock and then reacquire it
+        /// before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
         swtch(&c->context, &p->context);
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
+        /// Process is done running for now.
+        /// It should have changed its p->state before coming back.
         c->proc = 0;
         found = 1;
       }
       release(&p->lock);
     }
-    if(found == 0) {
-      // nothing to run; stop running on this core until an interrupt.
+    if(!found) {
       intr_on();
       asm volatile("wfi");
     }
