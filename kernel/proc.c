@@ -124,6 +124,8 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->priority = 0; // Prioridad inicial
+  p->boost = 1;    // Boost inicial
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -455,17 +457,37 @@ scheduler(void)
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
       if(p->state == RUNNABLE) {
+        struct proc *q;
+                for (q = proc; q < &proc[NPROC]; q++) {
+                    if (q->state != ZOMBIE) {
+                        q->priority += q->boost;
+
+                        if (q->priority >= 9) {
+                            q->boost = -1;
+                        } else if (q->priority <= 0) {
+                            q->boost = 1;
+                        }
+      }}
+      struct proc *highest = 0;
+                for (q = proc; q < &proc[NPROC]; q++) {
+                    if (q->state == RUNNABLE && (!highest || q->priority < highest->priority)) {
+                        highest = q;
+                    }
+                }     
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
-        // before jumping back to us.
+        // {before jumping back to us.
+        if (highest) {
+        p = highest;
         p->state = RUNNING;
         c->proc = p;
+        printf("Ejecutando proceso %s %d\n", p->name, p->pid);
         swtch(&c->context, &p->context);
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
         c->proc = 0;
-      }
+      }}
       release(&p->lock);
     }
   }
