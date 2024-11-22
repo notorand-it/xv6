@@ -7,9 +7,6 @@
 #include "syscall.h"
 #include "defs.h"
 
-
-
-
 // Fetch the uint64 at addr from the current process.
 int
 fetchaddr(uint64 addr, uint64 *ip)
@@ -152,3 +149,4 @@ syscall(void)
     p->trapframe->a0 = -1;
   }
 }
+
