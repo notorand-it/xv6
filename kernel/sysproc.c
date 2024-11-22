@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "syscall.h"
 
 uint64
 sys_exit(void)
@@ -15,10 +16,39 @@ sys_exit(void)
   return 0;  // not reached
 }
 
+// Implementación de getppid
 uint64
-sys_getpid(void)
+sys_getppid(void)
 {
-  return myproc()->pid;
+    struct proc *curproc = myproc();
+    if (curproc->parent) // Si el proceso tiene un padre
+        return curproc->parent->pid;
+    return -1; // Si no tiene padre
+}
+
+// Implementación de getancestor
+uint64
+sys_getancestor(void)
+{
+    int level;
+
+    // Obtener el argumento del nivel
+    argint(0, &level);
+
+    // Validar que el nivel no sea negativo
+    if (level < 0)
+        return -1;
+
+    struct proc *p = myproc(); // Proceso actual
+
+    // Recorre hacia arriba por los ancestros
+    for (int i = 0; i < level; i++) {
+        if (!p->parent) // Si no hay más ancestros válidos
+            return -1;
+        p = p->parent; // Avanzar al proceso padre
+    }
+
+    return p->pid; // Retornar el PID del ancestro
 }
 
 uint64
