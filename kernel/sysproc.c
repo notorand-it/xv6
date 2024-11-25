@@ -97,9 +97,9 @@ sys_getppid(void)
 {
     struct proc *curproc = myproc();
     if (curproc->parent) {
-        printf("Proceso actual: %d, Proceso padre: %d\n", curproc->pid, curproc->parent->pid);
+        printf("Proceso actual: %d\n", curproc->pid);
         return curproc->parent->pid;
     }
     printf("Error: proceso padre no encontrado\n");
-    return -1; // Devuelve un valor de error si no hay padre
+    return -1;
 }
