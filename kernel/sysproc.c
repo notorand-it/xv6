@@ -91,3 +91,15 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_getppid(void)
+{
+    struct proc *curproc = myproc();
+    if (curproc->parent) {
+        printf("Proceso actual: %d\n", curproc->pid);
+        return curproc->parent->pid;
+    }
+    printf("Error: proceso padre no encontrado\n");
+    return -1;
+}
