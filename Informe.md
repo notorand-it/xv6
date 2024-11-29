@@ -11,7 +11,7 @@ Estas funcionalidades mejoran el control de acceso, garantizando la seguridad y 
 ### chmod
 La función chmod permite cambiar los permisos asociados a un archivo. Sus características principales incluyen:
 
-### Actualizar los permisos de un archivo especificado a los valores definidos por el usuario.
+Actualizar los permisos de un archivo especificado a los valores definidos por el usuario.
 Proteger archivos inmutables (perm = 5) contra cualquier tipo de modificación, tanto en contenido como en permisos.
 
 ## Modificaciones Realizadas
