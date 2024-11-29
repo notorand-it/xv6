@@ -16,16 +16,6 @@ Proteger archivos inmutables (perm = 5) contra cualquier tipo de modificación, 
 
 ## Modificaciones Realizadas
 
-### Archivo inode.h
-Se añadió un nuevo campo perm a la estructura inode para gestionar los permisos. El campo tiene los siguientes valores posibles:
-
-0: Sin permisos.
-1: Solo lectura.
-2: Solo escritura.
-3: Lectura y escritura (valor inicial por defecto).
-5: Inmutable.
-Para evitar problemas de desalineación en el tamaño de la estructura, se incluyó un campo de relleno (padding), asegurando que la estructura sea múltiplo de BSIZE.
-
 ### Archivo sysfile.c
 Se realizaron las siguientes modificaciones para respetar los permisos:
 
