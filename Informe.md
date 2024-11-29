@@ -40,7 +40,7 @@ Se añadió la definición de la nueva llamada al sistema
 ### Archivo usys.pl
 Se agregó la entrada para la nueva función de sistema
 
-### Archivo chmodetest.c
+### Archivo chmodtest.c
 Se creó un programa de prueba para validar las funcionalidades implementadas. Este programa realiza las siguientes operaciones:
 
 Creación del archivo:
@@ -68,7 +68,7 @@ Si un archivo es inmutable, la función devuelve un error, bloqueando cambios en
 Pruebas
 
 ## Descripción del Programa de Prueba
-El programa chmodetest.c simula el uso de las nuevas funcionalidades de permisos en xv6. Sus pasos son:
+El programa chmodtest.c simula el uso de las nuevas funcionalidades de permisos en xv6. Sus pasos son:
 
 Crear un archivo con permisos de lectura/escritura.
 Cambiar los permisos a solo lectura y verificar que la escritura sea denegada.
