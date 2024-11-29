@@ -271,6 +271,7 @@ create(char *path, short type, short major, short minor)
   ip->major = major;
   ip->minor = minor;
   ip->nlink = 1;
+  
   iupdate(ip);
 
   if(type == T_DIR){  // Create . and .. entries.
@@ -304,71 +305,105 @@ create(char *path, short type, short major, short minor)
 uint64
 sys_open(void)
 {
-  char path[MAXPATH];
-  int fd, omode;
-  struct file *f;
-  struct inode *ip;
-  int n;
+    char path[MAXPATH];
+    int fd, omode;
+    uint64 upath;  // Dirección del path en el espacio de usuario
+    struct file *f = 0; // Inicializamos `f` a NULL para evitar el error
+    struct inode *ip;
 
-  argint(1, &omode);
-  if((n = argstr(0, path, MAXPATH)) < 0)
-    return -1;
+    // Obtener el proceso actual y los argumentos
+    struct proc *p = myproc();
+    upath = p->trapframe->a1;  // Primer argumento: dirección del path
+    omode = (int)p->trapframe->a2; // Segundo argumento: modo de apertura
 
-  begin_op();
+    // Copiar el path desde el espacio de usuario al kernel
+    if (fetchstr(upath, path, sizeof(path)) < 0)
+        return -1;
 
-  if(omode & O_CREATE){
-    ip = create(path, T_FILE, 0, 0);
-    if(ip == 0){
-      end_op();
-      return -1;
+    begin_op();
+
+    if (omode & O_CREATE) {
+        ip = create(path, T_FILE, 0, 0);
+        if (ip == 0) {
+            end_op();
+            return -1;
+        }
+        ip->permissions = 3;  // Permisos por defecto: lectura/escritura
+    } else {
+        if ((ip = namei(path)) == 0) {
+            end_op();
+            return -1;
+        }
+        ilock(ip);
+        if (ip->type == T_DIR && omode != O_RDONLY) {
+            iunlockput(ip);
+            end_op();
+            return -1;
+        }
     }
-  } else {
-    if((ip = namei(path)) == 0){
-      end_op();
-      return -1;
-    }
-    ilock(ip);
-    if(ip->type == T_DIR && omode != O_RDONLY){
-      iunlockput(ip);
-      end_op();
-      return -1;
-    }
-  }
 
-  if(ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)){
-    iunlockput(ip);
+    // Validación de permisos
+    if (ip->permissions == 5) {  // Inmutable
+        if ((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0) {
+            if (f)
+                fileclose(f);
+            iunlockput(ip);
+            end_op();
+            return -1;
+        }
+        f->readable = 1;
+        f->writable = 0;
+    } else {
+        // Validar permisos según el modo de apertura
+        if ((omode & O_WRONLY) && (ip->permissions & 2) == 0) {
+            iunlockput(ip);
+            end_op();
+            return -1;
+        }
+        if ((omode & O_RDONLY) && (ip->permissions & 1) == 0) {
+            iunlockput(ip);
+            end_op();
+            return -1;
+        }
+
+        if ((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0) {
+            if (f)
+                fileclose(f);
+            iunlockput(ip);
+            end_op();
+            return -1;
+        }
+        f->readable = !(omode & O_WRONLY);
+        f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
+    }
+
+    if (ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)) {
+        iunlockput(ip);
+        end_op();
+        return -1;
+    }
+
+    if (ip->type == T_DEVICE) {
+        f->type = FD_DEVICE;
+        f->major = ip->major;
+    } else {
+        f->type = FD_INODE;
+        f->off = 0;
+    }
+    f->ip = ip;
+
+    if ((omode & O_TRUNC) && ip->type == T_FILE) {
+        itrunc(ip);
+    }
+
+    iunlock(ip);
     end_op();
-    return -1;
-  }
 
-  if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
-    if(f)
-      fileclose(f);
-    iunlockput(ip);
-    end_op();
-    return -1;
-  }
-
-  if(ip->type == T_DEVICE){
-    f->type = FD_DEVICE;
-    f->major = ip->major;
-  } else {
-    f->type = FD_INODE;
-    f->off = 0;
-  }
-  f->ip = ip;
-  f->readable = !(omode & O_WRONLY);
-  f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
-
-  if((omode & O_TRUNC) && ip->type == T_FILE){
-    itrunc(ip);
-  }
-
-  iunlock(ip);
-  end_op();
-
-  return fd;
+    return fd;
 }
+
+
+
 
 uint64
 sys_mkdir(void)
@@ -503,3 +538,50 @@ sys_pipe(void)
   }
   return 0;
 }
+
+uint64
+sys_chmod(void)
+{
+    char path[MAXPATH];
+    uint64 upath;  // Dirección del argumento `path` en el espacio de usuario
+    int mode;
+
+    struct proc *p = myproc(); // Obtener el proceso actual
+
+    // Obtener el primer argumento (puntero al path)
+    if (fetchaddr(p->trapframe->a1, &upath) < 0) // `a1` contiene el primer argumento
+        return -1;
+
+    // Copiar el path desde el espacio de usuario al kernel
+    if (fetchstr(upath, path, sizeof(path)) < 0)
+        return -1;
+
+    // Obtener el segundo argumento (modo) directamente desde el trapframe
+    mode = (int)p->trapframe->a2; // `a2` contiene el segundo argumento (modo)
+
+    // Operaciones con el inode
+    begin_op();
+    struct inode *ip = namei(path);
+    if (ip == 0) {
+        end_op();
+        return -1;
+    }
+
+    ilock(ip);
+
+    // Verificar si es inmutable
+    if (ip->permissions == 5) {
+        iunlockput(ip);
+        end_op();
+        return -1;
+    }
+
+    // Actualizar permisos
+    ip->permissions = mode;
+    iupdate(ip);
+    iunlockput(ip);
+    end_op();
+
+    return 0;
+}
+

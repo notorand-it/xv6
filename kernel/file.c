@@ -108,6 +108,10 @@ fileread(struct file *f, uint64 addr, int n)
 {
   int r = 0;
 
+  // Verificar permisos de lectura
+  if(f->ip && (f->ip->permissions & 1) == 0)
+    return -1;  // Sin permiso de lectura
+
   if(f->readable == 0)
     return -1;
 
@@ -129,12 +133,26 @@ fileread(struct file *f, uint64 addr, int n)
   return r;
 }
 
+
 // Write to file f.
 // addr is a user virtual address.
 int
 filewrite(struct file *f, uint64 addr, int n)
 {
   int r, ret = 0;
+
+  // Verificar permisos de escritura
+  if(f->ip) {
+    // Verificar si el archivo es inmutable
+    if(f->ip->permissions == 5){
+      return -1;  // Archivo inmutable
+    }
+
+    // Verificar permiso de escritura
+    if((f->ip->permissions & 2) == 0){
+      return -1;  // Sin permiso de escritura
+    }
+  }
 
   if(f->writable == 0)
     return -1;
@@ -146,12 +164,7 @@ filewrite(struct file *f, uint64 addr, int n)
       return -1;
     ret = devsw[f->major].write(1, addr, n);
   } else if(f->type == FD_INODE){
-    // write a few blocks at a time to avoid exceeding
-    // the maximum log transaction size, including
-    // i-node, indirect block, allocation blocks,
-    // and 2 blocks of slop for non-aligned writes.
-    // this really belongs lower down, since writei()
-    // might be writing a device like the console.
+    // El código existente para escritura de archivos
     int max = ((MAXOPBLOCKS-1-1-2) / 2) * BSIZE;
     int i = 0;
     while(i < n){
@@ -179,4 +192,3 @@ filewrite(struct file *f, uint64 addr, int n)
 
   return ret;
 }
-
