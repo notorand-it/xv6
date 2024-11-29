@@ -127,7 +127,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
-[SYS_chmod]   sys_chmod,
+[SYS_chmod]  sys_chmod,
 };
 
 void

@@ -19,9 +19,17 @@ int mkdir(const char*);
 int chdir(const char*);
 int dup(int);
 int getpid(void);
+int getppid(void);
+int getancestor(int);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+
+int getpriority(void);  
+int getboost(void);
+int mprotect(void *addr, int len);
+int munprotect(void *addr, int len);
+int chmod(char *path, int mode);
 
 // ulib.c
 int stat(const char*, struct stat*);
@@ -41,5 +49,3 @@ void *memcpy(void *, const void *, uint);
 // umalloc.c
 void* malloc(uint);
 void free(void*);
-
-int chmod(char *path, int mode);

@@ -3,7 +3,7 @@
 
 
 #define ROOTINO  1   // root i-number
-#define BSIZE 1152  // block size
+#define BSIZE 1024  // block size
 
 // Disk layout:
 // [ boot block | super block | log | inode blocks |
@@ -28,15 +28,18 @@ struct superblock {
 #define NINDIRECT (BSIZE / sizeof(uint))
 #define MAXFILE (NDIRECT + NINDIRECT)
 
+// On-disk inode structure
 struct dinode {
-    short type;           // File type
-    short major;          // Major device number
-    short minor;          // Minor device number
-    short nlink;          // Number of links to inode in file system
-    uint size;            // Size of file (bytes)
-    uint addrs[NDIRECT+1];// Data block addresses
-    int permissions;      // Nuevo campo de permisos
-    char padding[4];      // Alineación a 72 bytes
+    short type;             // Tipo de archivo
+    short major;            // Número de dispositivo mayor
+    short minor;            // Número de dispositivo menor
+    short nlink;            // Número de enlaces
+    uint size;              // Tamaño del archivo en bytes
+    uint addrs[NDIRECT+1];  // Direcciones de bloques de datos
+    int perm;               // Permisos del archivo
+    char padding[57];  // Ajusta el tamaño del padding según sea necesario
+
+    //char padding[BSIZE - ((sizeof(short) * 3 + sizeof(uint) * (NDIRECT + 2) + sizeof(int)) % BSIZE)];
 };
 
 // Inodes per block.
@@ -44,6 +47,8 @@ struct dinode {
 
 // Block containing inode i
 #define IBLOCK(i, sb)     ((i) / IPB + sb.inodestart)
+
+void readsb(int dev, struct superblock *sb);
 
 // Bitmap bits per block
 #define BPB           (BSIZE*8)
@@ -58,4 +63,3 @@ struct dirent {
   ushort inum;
   char name[DIRSIZ];
 };
-

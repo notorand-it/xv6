@@ -1,3 +1,4 @@
+
 //
 // File-system system calls.
 // Mostly argument checking, since we don't trust
@@ -15,6 +16,7 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
+#include "buf.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -271,7 +273,6 @@ create(char *path, short type, short major, short minor)
   ip->major = major;
   ip->minor = minor;
   ip->nlink = 1;
-  
   iupdate(ip);
 
   if(type == T_DIR){  // Create . and .. entries.
@@ -305,105 +306,71 @@ create(char *path, short type, short major, short minor)
 uint64
 sys_open(void)
 {
-    char path[MAXPATH];
-    int fd, omode;
-    uint64 upath;  // Dirección del path en el espacio de usuario
-    struct file *f = 0; // Inicializamos `f` a NULL para evitar el error
-    struct inode *ip;
+  char path[MAXPATH];
+  int fd, omode;
+  struct file *f;
+  struct inode *ip;
+  int n;
 
-    // Obtener el proceso actual y los argumentos
-    struct proc *p = myproc();
-    upath = p->trapframe->a1;  // Primer argumento: dirección del path
-    omode = (int)p->trapframe->a2; // Segundo argumento: modo de apertura
+  argint(1, &omode);
+  if((n = argstr(0, path, MAXPATH)) < 0)
+    return -1;
 
-    // Copiar el path desde el espacio de usuario al kernel
-    if (fetchstr(upath, path, sizeof(path)) < 0)
-        return -1;
+  begin_op();
 
-    begin_op();
-
-    if (omode & O_CREATE) {
-        ip = create(path, T_FILE, 0, 0);
-        if (ip == 0) {
-            end_op();
-            return -1;
-        }
-        ip->permissions = 3;  // Permisos por defecto: lectura/escritura
-    } else {
-        if ((ip = namei(path)) == 0) {
-            end_op();
-            return -1;
-        }
-        ilock(ip);
-        if (ip->type == T_DIR && omode != O_RDONLY) {
-            iunlockput(ip);
-            end_op();
-            return -1;
-        }
+  if(omode & O_CREATE){
+    ip = create(path, T_FILE, 0, 0);
+    if(ip == 0){
+      end_op();
+      return -1;
     }
-
-    // Validación de permisos
-    if (ip->permissions == 5) {  // Inmutable
-        if ((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0) {
-            if (f)
-                fileclose(f);
-            iunlockput(ip);
-            end_op();
-            return -1;
-        }
-        f->readable = 1;
-        f->writable = 0;
-    } else {
-        // Validar permisos según el modo de apertura
-        if ((omode & O_WRONLY) && (ip->permissions & 2) == 0) {
-            iunlockput(ip);
-            end_op();
-            return -1;
-        }
-        if ((omode & O_RDONLY) && (ip->permissions & 1) == 0) {
-            iunlockput(ip);
-            end_op();
-            return -1;
-        }
-
-        if ((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0) {
-            if (f)
-                fileclose(f);
-            iunlockput(ip);
-            end_op();
-            return -1;
-        }
-        f->readable = !(omode & O_WRONLY);
-        f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
+  } else {
+    if((ip = namei(path)) == 0){
+      end_op();
+      return -1;
     }
-
-    if (ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)) {
-        iunlockput(ip);
-        end_op();
-        return -1;
+    ilock(ip);
+    if(ip->type == T_DIR && omode != O_RDONLY){
+      iunlockput(ip);
+      end_op();
+      return -1;
     }
+  }
 
-    if (ip->type == T_DEVICE) {
-        f->type = FD_DEVICE;
-        f->major = ip->major;
-    } else {
-        f->type = FD_INODE;
-        f->off = 0;
-    }
-    f->ip = ip;
-
-    if ((omode & O_TRUNC) && ip->type == T_FILE) {
-        itrunc(ip);
-    }
-
-    iunlock(ip);
+  if(ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)){
+    iunlockput(ip);
     end_op();
+    return -1;
+  }
 
-    return fd;
+  if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
+    if(f)
+      fileclose(f);
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+
+  if(ip->type == T_DEVICE){
+    f->type = FD_DEVICE;
+    f->major = ip->major;
+  } else {
+    f->type = FD_INODE;
+    f->off = 0;
+  }
+  f->ip = ip;
+  f->readable = !(omode & O_WRONLY);
+  f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
+
+  if((omode & O_TRUNC) && ip->type == T_FILE){
+    itrunc(ip);
+  }
+
+  iunlock(ip);
+  end_op();
+
+  return fd;
 }
-
-
-
 
 uint64
 sys_mkdir(void)
@@ -540,48 +507,58 @@ sys_pipe(void)
 }
 
 uint64
-sys_chmod(void)
-{
+sys_chmod(void) {
     char path[MAXPATH];
-    uint64 upath;  // Dirección del argumento `path` en el espacio de usuario
     int mode;
+    struct inode *ip;
 
-    struct proc *p = myproc(); // Obtener el proceso actual
+    // Validar y obtener argumentos
+    if (argstr(0, path, MAXPATH) < 0) {
+        return -1;  // Error al obtener la ruta
+    }
 
-    // Obtener el primer argumento (puntero al path)
-    if (fetchaddr(p->trapframe->a1, &upath) < 0) // `a1` contiene el primer argumento
+    // Manejo adecuado de `argint` (sin evaluar como condición)
+    argint(1, &mode);
+
+    // Verificar si el valor de mode es válido (agrega lógica de validación si es necesaria)
+    if (mode < 0) {
         return -1;
+    }
+    printf("Path recibido: %s, Modo solicitado: %d\n", path, mode);
+    begin_op();  // Inicia una transacción
 
-    // Copiar el path desde el espacio de usuario al kernel
-    if (fetchstr(upath, path, sizeof(path)) < 0)
-        return -1;
-
-    // Obtener el segundo argumento (modo) directamente desde el trapframe
-    mode = (int)p->trapframe->a2; // `a2` contiene el segundo argumento (modo)
-
-    // Operaciones con el inode
-    begin_op();
-    struct inode *ip = namei(path);
+    ip = namei(path);  // Buscar inode por ruta
     if (ip == 0) {
-        end_op();
+        end_op();  // Finaliza la transacción si falla
         return -1;
     }
 
     ilock(ip);
 
-    // Verificar si es inmutable
-    if (ip->permissions == 5) {
+    // Leer el superblock
+    struct superblock sb;
+    readsb(ip->dev, &sb);  // Asegúrate de que `readsb` esté declarada
+
+    // Leer el inodo del buffer correspondiente
+    struct buf *bp = bread(ip->dev, IBLOCK(ip->inum, sb));
+    struct dinode *dip = (struct dinode *)bp->data + ip->inum % IPB;
+    printf("Permisos actuales del archivo: %d\n", dip->perm);
+
+    // Verificar si el archivo es inmutable
+    if (dip->perm == 5) {
+        brelse(bp);
         iunlockput(ip);
-        end_op();
-        return -1;
+        end_op();  // Finaliza la transacción antes de salir
+        return -1; // Error: archivo inmutable
     }
 
-    // Actualizar permisos
-    ip->permissions = mode;
-    iupdate(ip);
+    dip->perm = mode;  // Cambiar permisos
+    log_write(bp);     // Sincronizar el cambio en el disco
+    brelse(bp);
+
     iunlockput(ip);
-    end_op();
+    printf("Permisos cambiados exitosamente.\n");
+    end_op();  // Finaliza la transacción
 
     return 0;
 }
-
