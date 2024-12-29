@@ -91,6 +91,9 @@ $U/initcode: $U/initcode.S
 	$(OBJCOPY) -S -O binary $U/initcode.out $U/initcode
 	$(OBJDUMP) -S $U/initcode.o > $U/initcode.asm
 
+$K/%.o: $K/%.S
+	$(CC) -g -c -o $@ $<
+
 tags: $(OBJS) _init
 	etags *.S *.c
 
