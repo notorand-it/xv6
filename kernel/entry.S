@@ -4,7 +4,11 @@
         # be placed at 0x80000000.
 .section .text
 .global _entry
+.extern fdt_address
 _entry:
+        la t0, fdt_address
+
+        sd a1, 0(t0)
         # set up a stack for C.
         # stack0 is declared in start.c,
         # with a 4096-byte stack per CPU.

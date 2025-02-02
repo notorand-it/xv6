@@ -3,10 +3,10 @@
 #include "memlayout.h"
 #include "riscv.h"
 #include "defs.h"
-
 volatile static int started = 0;
 
-// start() jumps here in supervisor mode on all CPUs.
+
+
 void
 main()
 {
@@ -16,10 +16,15 @@ main()
     printf("\n");
     printf("xv6 kernel is booting\n");
     printf("\n");
+
+    
+    dtbinit();
     kinit();         // physical page allocator
     kvminit();       // create kernel page table
     kvminithart();   // turn on paging
     procinit();      // process table
+    
+    
     trapinit();      // trap vectors
     trapinithart();  // install kernel trap vector
     plicinit();      // set up interrupt controller
