@@ -17,7 +17,7 @@ main:
 
     # проверка на более 1 пробела
     mv a0, sp
-    call find_space1
+    call find_space3
     addi a0, a0, 1
     
     call find_space2
@@ -29,6 +29,17 @@ main:
 
     li t4, 1
     beq t5, t4, ret2
+
+    li t4, ' '
+    # проверка, что в конце нет пробела
+    mv a0, sp
+    call ret1
+    beq t4, a0, ret2
+
+    # проверка, что в начале нет пробела
+    mv a0, sp
+    lb t6, 0(a0)
+    beq t4, t6, ret2
 
     call first_num
 
@@ -59,6 +70,15 @@ replace:
 
 ret:
     ret
+
+find_space3:
+    lb t1, 0(a0)
+    beqz t1, ret2
+    li t2, ' '
+    beq t1, t2, ret
+
+    addi a0, a0, 1
+    j find_space3
 
 find_space1:
     lb t1, 0(a0)
