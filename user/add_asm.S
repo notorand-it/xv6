@@ -3,7 +3,7 @@
 .global main
 
 main:
-    addi sp, sp, -128
+    addi sp, sp, -24
     mv a0, sp
 
     call gets
@@ -15,26 +15,27 @@ main:
     mv a1, sp
     call printf
 
+    # проверка, что поданная на вход строка имеет размер <= 23
+    li t4, 23
+    li t6, 0
+    mv a0, sp
+    call ret1
+    bgt t6, t4, ret3
+
     # проверка на более 1 пробела
     mv a0, sp
-    call find_space3
+    call find_space1
     addi a0, a0, 1
     
     call find_space2
-
-    # проверка на пустую строку
-    mv a0, sp
-    li t5, 0
-    call find_space1
-
-    li t4, 1
-    beq t5, t4, ret2
 
     li t4, ' '
     # проверка, что в конце нет пробела
     mv a0, sp
     call ret1
-    beq t4, a0, ret2
+    addi a0, a0, -1
+    lb t6, 0(a0)
+    beq t4, t6, ret2
 
     # проверка, что в начале нет пробела
     mv a0, sp
@@ -71,20 +72,11 @@ replace:
 ret:
     ret
 
-find_space3:
-    lb t1, 0(a0)
-    beqz t1, ret2
-    li t2, ' '
-    beq t1, t2, ret
-
-    addi a0, a0, 1
-    j find_space3
-
 find_space1:
     lb t1, 0(a0)
     beqz t1, ret2
     li t2, ' '
-    beq t1, t2, ret1
+    beq t1, t2, ret
 
     addi a0, a0, 1
     j find_space1
@@ -92,7 +84,7 @@ find_space1:
 ret1:
     lb t1, 0(a0)
     beqz t1, ret
-    addi t5, t5, 1
+    addi t6, t6, 1
     addi a0, a0, 1
     j ret1
 
@@ -170,7 +162,14 @@ find_space2:
     j find_space2
 
 ret2:
-    la a0, fmt_many_spaces
+    la a0, error_many_spaces
+    call printf
+    
+    li a0, 1
+    call exit
+
+ret3:
+    la a0, error_buffer_overflow
     call printf
     
     li a0, 1
@@ -180,4 +179,5 @@ ret2:
 .section .rodata
 fmt_input: .string "|%s|\n"
 fmt_sum: .string "%d\n"
-fmt_many_spaces: .string "Ошибка: строка не имеет вид |число число|\n"
+error_many_spaces: .string "Ошибка: строка не имеет вид |число число|\n"
+error_buffer_overflow: .string "Ошибка: переполнение буфера\n"
