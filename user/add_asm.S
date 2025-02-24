@@ -1,0 +1,163 @@
+#include "syscall.h"
+
+.global main
+
+main:
+    addi sp, sp, -128
+    mv a0, sp
+
+    call gets
+
+    mv t0, a0
+    call replace_loop
+
+    la a0, fmt_input
+    mv a1, sp
+    call printf
+
+    # проверка на более 1 пробела
+    mv a0, sp
+    call find_space1
+    addi a0, a0, 1
+    
+    call find_space2
+
+    # проверка на пустую строку
+    mv a0, sp
+    li t5, 0
+    call find_space1
+
+    li t4, 1
+    beq t5, t4, ret2
+
+    call first_num
+
+first_num:
+    # первое число
+    mv a0, sp
+
+    li t4, 0
+    li t5, '-'
+    lb t6, 0(a0)
+
+    beq t6, t5, is_negative1
+
+    call parse_num1
+
+replace_loop:
+    lb t1, 0(t0)
+    beqz t1, ret 
+    li t2, '\n'
+    beq t1, t2, replace
+
+    addi t0, t0, 1
+    j replace_loop
+
+replace:
+    sb zero, 0(t0)
+    ret
+
+ret:
+    ret
+
+find_space1:
+    lb t1, 0(a0)
+    beqz t1, ret2
+    li t2, ' '
+    beq t1, t2, ret1
+
+    addi a0, a0, 1
+    j find_space1
+
+ret1:
+    lb t1, 0(a0)
+    beqz t1, ret
+    addi t5, t5, 1
+    addi a0, a0, 1
+    j ret1
+
+is_negative1:
+    li t4, 1
+    addi a0, a0, 1
+
+    call parse_num1
+
+parse_num1:
+    call atoi 
+
+    bne t4, zero, get_negative1
+
+    call second_num
+
+get_negative1:
+    sub a0, zero, a0
+
+    call second_num
+
+is_negative2:
+    li t4, 1
+    addi a0, a0, 1
+
+    call parse_num2
+
+parse_num2:
+    call atoi 
+
+    bne t4, zero, get_negative2
+
+    call sum
+
+get_negative2:
+    sub a0, zero, a0
+
+    call sum
+
+second_num:
+    mv s0, a0
+
+    # второе число
+    mv a0, sp
+
+    call find_space1
+    addi a0, a0, 1
+
+    li t4, 0
+    lb t6, 0(a0)
+
+    beq t6, t5, is_negative2
+
+    call parse_num2
+
+sum:
+    mv s1, a0
+
+    # сумма
+    add a0, s0, s1
+    mv a1, a0
+    la a0, fmt_sum
+    call printf
+
+    li a0, 0
+    call exit
+
+find_space2:
+    lb t1, 0(a0)
+    beqz t1, ret
+    li t2, ' '
+    beq t1, t2, ret2
+
+    addi a0, a0, 1
+    j find_space2
+
+ret2:
+    la a0, fmt_many_spaces
+    call printf
+    
+    li a0, 1
+    call exit
+
+
+.section .rodata
+fmt_input: .string "|%s|\n"
+fmt_sum: .string "%d\n"
+fmt_many_spaces: .string "Ошибка: строка не имеет вид |число число|\n"
