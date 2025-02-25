@@ -1,3 +1,6 @@
+  .equ BUF_SIZE, 100
+  .equ BUF_SIZE_m_1, BUF_SIZE - 1  
+  
   .section .data
 debug_fmt:          .string "|%s|\n"
 sum_fmt:            .string "%d\n"
@@ -7,15 +10,16 @@ err_empty_num:      .string "error: one of the numbers is empty\n"
 err_more_args:      .string "error: more than two arguments\n"
 err_invalid_first:  .string "error: the first number is incorrect\n"
 err_invalid_second: .string "error: the second number is incorrect\n"
+err_overflow:       .string "error: buffer overflow\n"
 
   .section .bss
-buf:               .space 100         
+buf:               .space 100
 
   .section .text
 .globl main
 main:
   la   a0, buf
-  li   a1, 100
+  li   a1, BUF_SIZE
   call gets
   la   t0, buf
 
@@ -42,7 +46,24 @@ done_rm:
   beq  t0, zero, empty_string
 
   la   t0, buf
+  li   t1, 0
 
+count_loop:
+  lb   t2, 0(t0)
+  beq  t2, zero, count_done
+  addi t1, t1, 1
+  addi t0, t0, 1
+  j    count_loop
+count_done:
+  li   t3, BUF_SIZE_m_1
+  bne  t1, t3, no_overflow
+  la   t0, buf
+  add t0, t0, t1
+  lb   t2, -1(t0)
+  bne  t2, zero, overflow_buf
+
+no_overflow:
+  la   t0, buf
 find_space:
   lb   t1, 0(t0)
   beq  t1, zero, missing_space
@@ -61,6 +82,13 @@ empty_string:
 missing_space:
   li   a0, 2
   la   a1, err_missing_space
+  call fprintf
+  li   a0, 1
+  call exit
+
+overflow_buf:
+  li   a0, 2
+  la   a1, err_overflow
   call fprintf
   li   a0, 1
   call exit

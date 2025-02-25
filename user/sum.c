@@ -25,14 +25,23 @@ int main() {
       fprintf(2, "error: reading\n");
       exit(1);
     }
-    if (cc == 0 || c == '\n' || c == '\r')
+    if (cc == 0) break;
+    if (c == '\n' || c == '\r') {
+      buf[i] = '\0';
       break;
+    }
     buf[i++] = c;
   }
-
-  buf[i] = '\0';
-
+  
   printf("|%s|\n", buf);
+  
+  if (i == BUF_SIZE - 1 && buf[i - 1] != '\0') {
+    fprintf(2, "error: buffer overflow\n");
+    exit(1);
+  }
+
+  if (buf[i] != '\0') 
+    buf[i] = '\0';
 
   if (i == 0) {
     fprintf(2, "error: empty string\n");
@@ -82,4 +91,3 @@ int main() {
   printf("%d\n", a + b);
   exit(0);
 }
-
