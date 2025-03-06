@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "syscall.h"
+#include "test.h"
 #include "defs.h"
 
 // Fetch the uint64 at addr from the current process.
@@ -101,6 +102,7 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
+extern uint64 syscall_test(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -126,6 +128,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_test]    syscall_test,
 };
 
 void
