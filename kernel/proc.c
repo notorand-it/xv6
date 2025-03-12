@@ -169,6 +169,8 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  // trace
+  p->trace_mask = 0;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -287,7 +289,6 @@ fork(void)
   if((np = allocproc()) == 0){
     return -1;
   }
-
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
@@ -320,6 +321,8 @@ fork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
+  // trace
+  np->trace_mask = p->trace_mask;
   release(&np->lock);
 
   return pid;
