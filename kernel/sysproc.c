@@ -5,6 +5,8 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sysinfo.h"
+#include "run.h"
 
 uint64
 sys_exit(void)
@@ -104,21 +106,60 @@ sys_trace()
   printf("trace pid: %d\n", pro->pid);
   pro->trace_mask = mask;
   return 0;
-} 
+}
+
+// Get the number of bytes of free memory
+uint64
+sys_get_free_memory()
+{
+  struct run *r;
+  struct {
+    struct spinlock lock;
+    struct run *freelist;
+  } kmem;
+  uint64 pages = 0;
+
+  acquire(&kmem.lock);
+  r = kmem.freelist;
+  while (r) {
+    pages++;
+    r = r->next;   
+  }
+  release(&kmem.lock);
+
+  return pages * PGSIZE;
+}
+
+// Get the num of proccesses
+uint64
+sys_get_proccesses_num()
+{
+  struct proc *p;
+  struct proc proc[NPROC];
+  uint64 num = 0;
+
+  for(p = proc; p < &proc[NPROC]; p++) {
+    if(p->state != UNUSED) 
+      num++;
+  }
+
+  return num;
+}
 
 uint64
 sys_sysinfo()
 {
-  uint64 param;
-  if(argaddr(0, &param) < 0)
+  uint64 parameter;
+  argaddr(0, &parameter);
+  if(parameter < 0)
     return -1;
   
   struct sysinfo info;
-  info.freemem = get_free_memory();
-  info.nproc = get_proccesses_num();
+  info.freemem = sys_get_free_memory();
+  info.nproc = sys_get_proccesses_num();
 
   struct proc *p = myproc();
-  if (copyout(p->pagetable, param, (char *)&info, sizeof(info)) < 0)
+  if (copyout(p->pagetable, parameter, (char *)&info, sizeof(info)) < 0)
     return -1;
 
   return 0;
