@@ -6,7 +6,8 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "sysinfo.h"
-#include "run.h"
+#include "file.h"
+#include "kalloc.h"
 
 uint64
 sys_exit(void)
@@ -108,44 +109,6 @@ sys_trace()
   return 0;
 }
 
-// Get the number of bytes of free memory
-uint64
-sys_get_free_memory()
-{
-  struct run *r;
-  struct {
-    struct spinlock lock;
-    struct run *freelist;
-  } kmem;
-  uint64 pages = 0;
-
-  acquire(&kmem.lock);
-  r = kmem.freelist;
-  while (r) {
-    pages++;
-    r = r->next;   
-  }
-  release(&kmem.lock);
-
-  return pages * PGSIZE;
-}
-
-// Get the num of proccesses
-uint64
-sys_get_proccesses_num()
-{
-  struct proc *p;
-  struct proc proc[NPROC];
-  uint64 num = 0;
-
-  for(p = proc; p < &proc[NPROC]; p++) {
-    if(p->state != UNUSED) 
-      num++;
-  }
-
-  return num;
-}
-
 uint64
 sys_sysinfo()
 {
@@ -155,8 +118,9 @@ sys_sysinfo()
     return -1;
   
   struct sysinfo info;
-  info.freemem = sys_get_free_memory();
-  info.nproc = sys_get_proccesses_num();
+  info.freemem = get_free_memory();
+  info.nproc = get_proccesses_num();
+  info.nopenfiles = get_open_files_num();
 
   struct proc *p = myproc();
   if (copyout(p->pagetable, parameter, (char *)&info, sizeof(info)) < 0)

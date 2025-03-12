@@ -106,3 +106,5 @@ struct proc {
   char name[16];               // Process name (debugging)
   int trace_mask;              // trace syscall mas
 };
+
+uint64 get_proccesses_num();
