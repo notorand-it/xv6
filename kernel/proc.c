@@ -693,3 +693,44 @@ procdump(void)
     printf("\n");
   }
 }
+
+int _ps_listinfo(struct procinfo* plist, int lim) {
+  struct proc *caller = myproc();
+
+  int prcs = 0;
+  for(struct proc* p = proc; p < &proc[NPROC]; p++) {
+    if (prcs == lim)
+      return -1;
+  
+    struct procinfo data;
+    memmove(data.name, p->name, 16);
+
+    acquire(&(p->lock));
+    data.state = p->state - 2;
+
+    data.pid = p->pid;
+    release(&(p->lock));
+
+    if ((int)data.state < 0)
+      continue;
+
+    acquire(&wait_lock);
+    struct proc* par = p->parent;
+
+    if (par)
+      acquire(&(par->lock)),
+      data.ppid = par->pid,
+      release(&(par->lock));
+    else
+      data.ppid = -1;
+
+    release(&wait_lock);
+
+    if (plist && copyout(caller->pagetable, (uint64)plist++, (char*)&data, sizeof(struct procinfo)))
+      return -2;
+
+    ++prcs;
+  }
+
+  return prcs;
+}
