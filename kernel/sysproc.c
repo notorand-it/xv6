@@ -91,3 +91,14 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+
+int sys_ps_listinfo (){
+    uint64 plist;
+    argaddr(0, &plist);
+
+    int lim;
+    argint(1, &lim);
+
+    return ps_listinfo ((struct procinfo*) plist, lim);
+}
