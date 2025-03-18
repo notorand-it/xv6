@@ -93,7 +93,7 @@ sys_uptime(void)
 }
 
 
-int sys_ps_listinfo (){
+uint64 sys_ps_listinfo (void){
     uint64 plist;
     argaddr(0, &plist);
 
