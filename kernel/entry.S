@@ -10,6 +10,10 @@ _entry:
         # with a 4096-byte stack per CPU.
         # sp = stack0 + (hartid * 4096)
         la sp, stack0
+	# la sp, end
+	#lui sp, %hi(stack0)  # 스택 상위 20비트 로드 
+        #addi sp, sp, %lo(stack0)  # 스택 하위 12비트 추가
+
         li a0, 1024*4
         csrr a1, mhartid
         addi a1, a1, 1

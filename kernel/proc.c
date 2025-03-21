@@ -146,6 +146,11 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
+  // init setting
+  p->nice = 20;
+  p->lag = 0;
+  p->marked = 0;
+
   return p;
 }
 
@@ -320,6 +325,12 @@ fork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
+
+  // forked process int
+  np->nice = p->nice;
+  np->lag = 0;
+  np->marked = 0;
+
   release(&np->lock);
 
   return pid;
@@ -692,4 +703,98 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+//proj_1
+//make system calls
+// default nice value is 20; 
+// lower nice values cause more favorable scheduling
+
+// it will be necessary to implement the nice value
+// before creating the system call 
+
+int getnice(int pid){                                   
+  //optains the nice value of a process
+  struct proc *p;
+
+  for(p = proc; p < &proc[NPROC]; p++){
+	  acquire(&p->lock); //lock the process
+    if (p->pid == pid){
+      int nice_value = p->nice;
+      release(&p->lock); //unlock the process table
+      return nice_value; // return the nice value of target process on success
+    }
+      release(&p->lock);
+  }
+  return -1; // if there is no process corresponding to the pid
+}
+
+
+int setnice(int pid, int value){
+  // check invalid value 
+  // the range of valid nice value is 0~39
+  if(value < 0 || value > 39){
+    return -1;
+  }
+
+  struct proc *p;
+  
+  //find the process with the given pid
+  for(p = proc; p < &proc[NPROC]; p++){
+	    acquire(&p->lock); //lock the process table
+    if (p->pid == pid){
+      p->nice = value; //sets the nice value of a process
+      release(&p->lock); //unlock the process table 
+      return 0; // return 0 on success 
+    }
+    release(&p->lock);
+  } 
+  
+  return -1; // if there is no process corresponding to the pid 
+
+}
+
+
+
+void ps(int pid){
+  struct proc *p;
+
+  printf("name\tpid\tstate\t\tpriority\truntime/weight\truntime\t\tvruntime\t\ttick %d\n", ticks*1000);
+  static char *states[] = {
+  [UNUSED]    "unused",
+  [USED]      "used",
+  [SLEEPING]  "sleep ",
+  [RUNNABLE]  "runble",
+  [RUNNING]   "run   ",
+  [ZOMBIE]    "zombie"
+  };
+  char *state;
+
+  for(p = proc; p < &proc[NPROC]; p++){
+	  acquire(&p->lock); //lock the process table
+    if (pid == 0 || p->pid == pid){
+      //enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+      if(p->state == UNUSED){
+	       release(&p->lock);
+         continue; 
+      }
+    	if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
+      state = states[p->state];
+    	else
+      state = "???";
+
+//      cprintf("%s\t%d\t%s\t%d\t\t%d\t\t%d\t\t%d\n", 
+//		      p->name, p->pid, state, p->nice, p->runtime_d_weight, p->runtime, p->vruntime);
+      printf("%s\t%d\t%s\t%d\t\n", p->name, p->pid, state, p->nice);
+    }
+      release(&p->lock); //unlock the process table
+    
+  }
+  // prints out process(s)'s information 
+
+ // if pid == 0, print out all process's information
+ // otherwise, print out corresponding process's information
+ // if there is no process corresponding to pid, print out nothing
+ // no return value 
+
 }
