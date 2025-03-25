@@ -4,6 +4,8 @@
 #include "user/user.h"
 #include "kernel/fcntl.h"
 
+
+
 // Parsed command representation
 #define EXEC  1
 #define REDIR 2
@@ -53,6 +55,17 @@ int fork1(void);  // Fork but panics on failure.
 void panic(char*);
 struct cmd *parsecmd(char*);
 void runcmd(struct cmd*) __attribute__((noreturn));
+int strncmp(const char *s1, const char *s2, int n) {
+  while (n > 0 && *s1 && *s1 == *s2) {
+      s1++;
+      s2++;
+      n--;
+  }
+  if (n == 0) {
+      return 0;
+  }
+  return *(unsigned char *)s1 - *(unsigned char *)s2;
+}
 
 // Execute cmd.  Never returns.
 void
@@ -74,6 +87,36 @@ runcmd(struct cmd *cmd)
 
   case EXEC:
     ecmd = (struct execcmd*)cmd;
+    // the part added from doc to recognize "!"
+    if (ecmd->argv[0] && strcmp(ecmd->argv[0], "!") == 0) {
+      if (ecmd->argv[1]) {
+          // Check for message length
+          if (strlen(ecmd->argv[1]) > 512) {
+              printf("message too long\n");
+              exit(0);
+          }
+
+          // Search for "os" 
+          char *message = ecmd->argv[1];
+          char *token = message;
+          while (*token) {
+              if (strncmp(token, "os", 2) == 0) {
+                  // Print "os" in blue using ANSI escape codes
+                  printf("\033[34m%s\033[0m", "os"); // "\033[34m" starts blue, "\033[0m" resets color
+                  token += 2; // Move past "os"
+              } else {
+                  // Print other characters in default color
+                  write(1, token, 1);
+                  token++;
+              }
+          }
+          printf("\n"); 
+      } else {
+          
+          printf("Error: No message provided for '!'\n");
+      }
+      exit(0); // Required
+  }
     if(ecmd->argv[0] == 0)
       exit(1);
     exec(ecmd->argv[0], ecmd->argv);
