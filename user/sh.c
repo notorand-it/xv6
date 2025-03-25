@@ -74,6 +74,36 @@ runcmd(struct cmd *cmd)
 
   case EXEC:
     ecmd = (struct execcmd*)cmd;
+    // the part added from doc to recognize "!"
+    if (ecmd->argv[0] && strcmp(ecmd->argv[0], "!") == 0) {
+      if (ecmd->argv[1]) {
+          // Check for message length
+          if (strlen(ecmd->argv[1]) > 512) {
+              printf("message too long\n");
+              exit(0);
+          }
+
+          // Search for "os" 
+          char *message = ecmd->argv[1];
+          char *token = message;
+          while (*token) {
+              if (strncmp(token, "os", 2) == 0) {
+                  // Print "os" in blue using ANSI escape codes
+                  printf("\033[34m%s\033[0m", "os"); // "\033[34m" starts blue, "\033[0m" resets color
+                  token += 2; // Move past "os"
+              } else {
+                  // Print other characters in default color
+                  putchar(*token);
+                  token++;
+              }
+          }
+          printf("\n"); 
+      } else {
+          
+          printf("Error: No message provided for '!'\n");
+      }
+      exit(0); // Required
+  }
     if(ecmd->argv[0] == 0)
       exit(1);
     exec(ecmd->argv[0], ecmd->argv);
@@ -134,7 +164,7 @@ runcmd(struct cmd *cmd)
 int
 getcmd(char *buf, int nbuf)
 {
-  write(2, "$mobina_sorena ", 14);
+  write(2, "$ ", 2);
   memset(buf, 0, nbuf);
   gets(buf, nbuf);
   if(buf[0] == 0) // EOF
