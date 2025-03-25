@@ -3,8 +3,7 @@
 #include "kernel/types.h"
 #include "user/user.h"
 #include "kernel/fcntl.h"
-#include <string.h>
-#include <stdio.h>
+
 
 
 // Parsed command representation
@@ -56,6 +55,17 @@ int fork1(void);  // Fork but panics on failure.
 void panic(char*);
 struct cmd *parsecmd(char*);
 void runcmd(struct cmd*) __attribute__((noreturn));
+int strncmp(const char *s1, const char *s2, int n) {
+  while (n > 0 && *s1 && *s1 == *s2) {
+      s1++;
+      s2++;
+      n--;
+  }
+  if (n == 0) {
+      return 0;
+  }
+  return *(unsigned char *)s1 - *(unsigned char *)s2;
+}
 
 // Execute cmd.  Never returns.
 void
@@ -96,7 +106,7 @@ runcmd(struct cmd *cmd)
                   token += 2; // Move past "os"
               } else {
                   // Print other characters in default color
-                  putchar(*token);
+                  write(1, token, 1);
                   token++;
               }
           }
