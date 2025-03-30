@@ -46,7 +46,7 @@ usertrap(void)
   w_stvec((uint64)kernelvec);
 
   struct proc *p = myproc();
-  
+ 
   // save user program counter.
   p->trapframe->epc = r_sepc();
   
@@ -77,9 +77,30 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
-    yield();
+  if(which_dev == 2 && p != 0 && p->state == RUNNING){
+    int delta_runtime = 1000;
+    //int V = avg_vruntime(); // global virtual runtime 
 
+    // runtime 업데이트
+    p->runtime += delta_runtime;
+
+    // vruntime 업데이트
+    int weight = weight_table[p->nice];
+    p->vruntime += ((delta_runtime * weight_table[20]) / weight);
+
+    // time_slice 업데이트
+    p->time_slice -= delta_runtime;
+
+//    update_avg_vruntime();
+
+    if (p->time_slice <= 0){
+	//process has used all the given time slice	
+    	// vdeadline 업데이트
+    	p->vdeadline = p->vruntime + ( BASE_SLICE * ( weight_table[20] / weight_table[p->nice]));
+
+    	yield();
+    }
+  }
   usertrapret();
 }
 
@@ -153,7 +174,6 @@ kerneltrap()
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2 && myproc() != 0)
     yield();
-
   // the yield() may have caused some traps to occur,
   // so restore trap registers for use by kernelvec.S's sepc instruction.
   w_sepc(sepc);
@@ -173,7 +193,7 @@ clockintr()
   // ask for the next timer interrupt. this also clears
   // the interrupt request. 1000000 is about a tenth
   // of a second.
-  w_stimecmp(r_time() + 1000000);
+  w_stimecmp(r_time() + 100000);
 }
 
 // check if it's an external interrupt or software interrupt,

@@ -105,7 +105,17 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 			       //
-  int nice;		       // nice value
-  float lag;		       // lag value
-  int marked;		       // makred for dequeue?
+  int nice;		       // (pa1) nice value
+  int runtime;			//(pa2)-ps output 총 런타임, 프로세스가 실제로 CPU를 사용한 시간
+  int vruntime;			//(pa2)-ps output 가상 런타임
+  int time_slice;		//(pa2) scheduler() 안에서 저장
+  int vdeadline;		// (pa2)-virtual deadline
 };
+
+extern int weight_table[40];
+extern struct proc proc[NPROC];
+extern int avg_vruntime;
+extern int min_vruntime;
+extern int total_weight;
+extern void update_avg_vruntime(void);
+extern int is_eligible(struct proc *p);

@@ -6,6 +6,22 @@
 #include "proc.h"
 #include "defs.h"
 
+int weight_table[40] = {
+ /* 0  */     88761,     71755,     56483,     46273,     36291,
+ /* 5  */     29154,     23254,     18705,     14949,     11916,
+ /* 10 */      9548,      7620,      6100,      4904,      3906,
+ /* 15 */      3121,      2501,      1991,      1586,      1277,
+ /* 20 */      1024,       820,       655,       526,       423,
+ /* 25 */       335,       272,       215,       172,       137,
+ /* 30 */       110,        87,        70,        56,        45,
+ /* 35 */        36,        29,        23,        18,        15,
+};
+
+int avg_vruntime;
+int min_vruntime;
+int total_weight;
+//struct spinlock avg_lock;
+
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
@@ -124,6 +140,13 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+   
+  // init setting
+  p->nice = 20;
+  p->vdeadline = BASE_SLICE;
+  p->runtime = 0; //(pa2)-ps output 총 런타임, 프로세스가 실제로 CPU를 사용한 시간
+  p->vruntime = 0; //(pa2)-ps output 가상 런타임
+  p->time_slice = BASE_SLICE; //(pa2)
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -145,11 +168,6 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
-
-  // init setting
-  p->nice = 20;
-  p->lag = 0;
-  p->marked = 0;
 
   return p;
 }
@@ -173,6 +191,13 @@ freeproc(struct proc *p)
   p->chan = 0;
   p->killed = 0;
   p->xstate = 0;
+
+  p->nice = 0;
+  p->runtime = 0;
+  p->vruntime = 0;
+  p->time_slice = 0;
+  p->vdeadline = 0;
+ 
   p->state = UNUSED;
 }
 
@@ -307,6 +332,15 @@ fork(void)
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;
 
+    //(pa2)
+  // 자식 프로세스가 부모 프로세스의 vruntime, nice_value를 상속받도록 수정
+  // runtime: allocporc에서 0으로 세팅됨 (new process -> new runtime)
+  // time slice : allocproc에서 디폴트 값으로 세팅됨
+  np->vruntime = p->vruntime; // 부모의 vruntime 상속
+  np->nice = p->nice; // 부모의 nice value 상속
+  // deadline : re-calculated based on vruntime, not inherited. (부모 vdeadline might not be updated)
+  np->vdeadline = np->vruntime + ( BASE_SLICE * (weight_table[20] / weight_table[np->nice]));
+
   // increment reference counts on open file descriptors.
   for(i = 0; i < NOFILE; i++)
     if(p->ofile[i])
@@ -326,12 +360,9 @@ fork(void)
   acquire(&np->lock);
   np->state = RUNNABLE;
 
-  // forked process int
-  np->nice = p->nice;
-  np->lag = 0;
-  np->marked = 0;
-
   release(&np->lock);
+
+  update_avg_vruntime();
 
   return pid;
 }
@@ -452,6 +483,21 @@ wait(uint64 addr)
 //  - swtch to start running that process.
 //  - eventually that process transfers control
 //    via swtch back to the scheduler.
+//            if(p->state == RUNNABLE) {
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+       /* p->state = RUNNING;
+        c->proc = p;
+        swtch(&c->context, &p->context);
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+        found = 1;
+      }
+      release(&p->lock);
+    }*/
 void
 scheduler(void)
 {
@@ -466,23 +512,41 @@ scheduler(void)
     intr_on();
 
     int found = 0;
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state == RUNNABLE) {
+    struct proc *min_vdl_process = 0; // 가장 빠른 (작은) vdeadline을 가진 프로세스 포인터 초기화
+    int min_vdeadline = MAX_INT; // 최대 값으로 초기화하여 최소 vruntime을 찾기 쉽게 함 ~0 == 0xFFFFFFFF
+
+    // - Select process with earliest eligible virtual deadline from runnable processes
+    for(p = proc; p < &proc[NPROC]; p++){
+    	acquire(&p->lock);	
+      if(p->state == RUNNABLE && p->vdeadline < min_vdeadline) { // 실행 가능한 프로세스에 대해
+	if (is_eligible(p)){
+	  min_vdeadline = p->vdeadline; // 최소 vruntime 업데이트
+          min_vdl_process = p; // 가장 작은 vruntime을 가진 프로세스 저장
+      }}
+      release(&p->lock);
+    }
+
+    // 가장 작은 vdeadline을 가진 프로세스가 발견되었다면 실행
+    if(min_vdl_process) { // time_slice 계산
+     // min_vdl_process->time_slice = timeslice_table[NCPU];
+      acquire(&min_vdl_process->lock);
+      if(min_vdl_process->state == RUNNABLE) {
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
+ 
+      min_vdl_process->state = RUNNING;
+        c->proc = min_vdl_process;
+        swtch(&c->context, &min_vdl_process->context);
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
         c->proc = 0;
         found = 1;
-      }
-      release(&p->lock);
     }
+  release(&min_vdl_process->lock);
+    } //else{ printf("smth wrong!!");}
+
     if(found == 0) {
       // nothing to run; stop running on this core until an interrupt.
       intr_on();
@@ -522,6 +586,7 @@ sched(void)
 void
 yield(void)
 {
+	update_avg_vruntime();
   struct proc *p = myproc();
   acquire(&p->lock);
   p->state = RUNNABLE;
@@ -591,8 +656,10 @@ wakeup(void *chan)
 {
   struct proc *p;
 
+  struct proc *curr = mycpu()->proc;
+
   for(p = proc; p < &proc[NPROC]; p++) {
-    if(p != myproc()){
+    if(p != curr){
       acquire(&p->lock);
       if(p->state == SLEEPING && p->chan == chan) {
         p->state = RUNNABLE;
@@ -600,6 +667,8 @@ wakeup(void *chan)
       release(&p->lock);
     }
   }
+
+  update_avg_vruntime();
 }
 
 // Kill the process with the given pid.
@@ -744,6 +813,9 @@ int setnice(int pid, int value){
 	    acquire(&p->lock); //lock the process table
     if (p->pid == pid){
       p->nice = value; //sets the nice value of a process
+	// vdeadline 업데이트
+      p->vdeadline = p->vruntime + ( 5000 * ( weight_table[20] / weight_table[p->nice]));
+
       release(&p->lock); //unlock the process table 
       return 0; // return 0 on success 
     }
@@ -759,7 +831,7 @@ int setnice(int pid, int value){
 void ps(int pid){
   struct proc *p;
 
-  printf("name\tpid\tstate\t\tpriority\truntime/weight\truntime\t\tvruntime\t\ttick %d\n", ticks*1000);
+  printf("name\tpid\tstate\t\tpriority\truntime/weight\truntime\t\tvruntime\tvdeadline\tis_eligible\ttick %d\n", ticks*1000);
   static char *states[] = {
   [UNUSED]    "unused",
   [USED]      "used",
@@ -769,6 +841,8 @@ void ps(int pid){
   [ZOMBIE]    "zombie"
   };
   char *state;
+  int runtime_d_weight;
+  char *eligible;
 
   for(p = proc; p < &proc[NPROC]; p++){
 	  acquire(&p->lock); //lock the process table
@@ -783,9 +857,16 @@ void ps(int pid){
     	else
       state = "???";
 
-//      cprintf("%s\t%d\t%s\t%d\t\t%d\t\t%d\t\t%d\n", 
-//		      p->name, p->pid, state, p->nice, p->runtime_d_weight, p->runtime, p->vruntime);
-      printf("%s\t%d\t%s\t%d\t\n", p->name, p->pid, state, p->nice);
+	if(is_eligible(p)) eligible = "true";
+	else eligible = "false";
+
+	runtime_d_weight = p->runtime / weight_table[p->nice];
+
+      printf("%s\t%d\t%s\t\t%d\t\t%d\t\t%d\t\t%d\t\t%d\t\t%s\n",
+       p->name, p->pid, state, p->nice,
+       runtime_d_weight, p->runtime,
+       p->vruntime, p->vdeadline, eligible);
+
     }
       release(&p->lock); //unlock the process table
     
@@ -797,4 +878,47 @@ void ps(int pid){
  // if there is no process corresponding to pid, print out nothing
  // no return value 
 
+}
+
+void update_avg_vruntime(void){
+    avg_vruntime = 0; // global virtual runtime
+    total_weight = 0;		      // total weight
+    struct proc *p;         //
+    min_vruntime = MAX_INT; // 최대 값으로 초기화하여 최소 vruntime을 찾기 쉽게 함
+
+    // - find min vruntime & total weight
+    for(p = proc; p < &proc[NPROC]; p++) {
+        acquire(&p->lock);
+      if(p->state == RUNNABLE || p->state == RUNNING){
+        if(p->vruntime < min_vruntime) { // 실행 가능한 프로세스에 대해
+          min_vruntime = p->vruntime; // 최소 vruntime 업데이트
+        }
+        total_weight += weight_table[p->nice]; // weight sum
+      }
+      release(&p->lock);
+    }
+
+    for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->state == RUNNABLE || p->state == RUNNING) {
+              avg_vruntime += (p->vruntime - min_vruntime) * weight_table[p->nice];
+              // sum of ( v_i - v0 ) * w_i 구하기
+      }
+      release(&p->lock);
+    }
+
+    // total weight로 나누기
+    //int V = (avg_vruntime / total_weight) + min_vruntime;
+
+/*     \Sum ((v_i - v0) + v0) * w_i   \Sum (v_i - v0) * w_i
+ * V = ---------------------------- = --------------------- + v0
+ *                  W                            W
+ */
+
+    //return V;
+    //
+}
+
+int is_eligible(struct proc *p){
+    return (avg_vruntime >= total_weight * (p->vruntime - min_vruntime));
 }
