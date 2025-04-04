@@ -59,8 +59,6 @@ exec(char *path, char **argv)
       goto bad;
     if(ph.vaddr + ph.memsz < ph.vaddr)
       goto bad;
-    if(ph.vaddr % PGSIZE != 0)
-      goto bad;
     uint64 sz1;
     if((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz, flags2perm(ph.flags))) == 0)
       goto bad;
@@ -147,10 +145,25 @@ exec(char *path, char **argv)
 static int
 loadseg(pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz)
 {
-  uint i, n;
+  uint i, n, forstart;
   uint64 pa;
 
-  for(i = 0; i < sz; i += PGSIZE){
+  forstart = 0;
+  if (va % PGSIZE != 0){
+    uint pgleft = PGSIZE - (va & 0xfff);
+    pa = walkaddr(pagetable, va);
+    if(pa == 0)
+      panic("loadseg: address should exist");
+    n = pgleft <= sz ? pgleft : sz;
+    if(readi(ip, 0, (uint64)pa, offset, n) != n)
+      return -1;
+    if (sz <= pgleft) {
+      return 0;
+    }
+    forstart = PGSIZE;
+  }
+
+  for(i = forstart; i < sz; i += PGSIZE){
     pa = walkaddr(pagetable, va + i);
     if(pa == 0)
       panic("loadseg: address should exist");
