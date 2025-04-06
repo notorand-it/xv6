@@ -5,15 +5,11 @@
 .section .data
     buf: .zero 512
     len: .word 512
-    string: .asciz "%s\n"
     error_message_1: .asciz "Usage: sum_a <int64 number> <int64 number>"
     error_message_2: .asciz "Invalid number"
-
-
-    debug_0: .asciz "DEBUG\n"
-
-    number: .asciz "%ld\n"
+    string: .asciz "%s\n"
     print_message: .asciz "The sum is %d\n"
+    input_format: .asciz "|%s|\n"
 
 .text
 
@@ -23,6 +19,12 @@ main:
     call gets
 
     la a0, buf
+    call replace_eol
+    la a0, input_format
+    la a1, buf
+    call printf
+    la a0, buf
+    lw a1, len
     call find_delimiter #a0 - pointer to delimiter
     sb x0, 0(a0) #put \0 to delimiter
 
@@ -115,3 +117,20 @@ invalid_number:
     li a0, -1
     call exit
     ret
+
+replace_eol: #a0 - pointer to buf
+    li t0, 0
+    li t4, 10
+    lw t1, len
+replace_eol_loop:
+    add t2, a0, t0
+    lw t3, 0(t2)
+    beq t3, t4, replace_eol_ret
+    addi t0, t0, 1
+    blt t0, t1, replace_eol_loop
+    ret
+replace_eol_ret:
+    li t0, 0
+    sw t0, 0(t2)
+    ret
+

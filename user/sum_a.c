@@ -39,13 +39,16 @@ int get_int(char* buf, size_t buf_size) {
 }
 
 int main(int argc, char** argv) {
-  printf("%d", '0');
   char buf[512];
   int n = 0;
   int a,b;
   long sum;
 
   n = read(0, buf, sizeof(buf));
+  if(n > 0) {
+     buf[n-1] = 0;
+  }
+  printf("|%s|\n", buf);
   if(n < 4) {
     printf("%s", "Usage: sum_a <int64 number> <int64 number>\n");
     return exit(1);
@@ -65,7 +68,6 @@ int main(int argc, char** argv) {
   b = get_int(buf+delimiter_idx+1, n - delimiter_idx - 2);
 
   sum = (long)a + b;
-
   printf("The sum is %ld\n", sum);
   exit(0);
 }
