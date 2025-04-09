@@ -91,3 +91,38 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_calculate(void) {
+    int x, y;
+    uint64 op_addr, result_addr;
+    char op;
+    int res = 0;
+
+    argint(0, &x);
+    argint(1, &y);
+    argaddr(2, &op_addr);
+    argaddr(3, &result_addr);
+
+    if (op_addr == 0 || result_addr == 0)
+        return -1;
+
+    if (copyin(myproc()->pagetable, (char*)&op, op_addr, 1) < 0)
+        return -1;
+
+    switch (op) {
+        case '+': res = x + y; break;
+        case '-': res = x - y; break;
+        case '*': res = x * y; break;
+        case '/':
+            if (y == 0) return -1;
+            res = x / y;
+            break;
+        default: return -1;
+    }
+
+    if (copyout(myproc()->pagetable, result_addr, (char*)&res, sizeof(res)) < 0)
+        return -1;
+
+    return 0;
+}
