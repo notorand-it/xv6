@@ -104,6 +104,9 @@ extern uint64 sys_close(void);
 extern uint64 sys_calculate(void);
 extern uint64 sys_getyear(void);
 
+// add a calculate system call int calculate(int x, int y, char* op, int* result)
+extern uint64 sys_calculate(void);
+
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
 static uint64 (*syscalls[])(void) = {
@@ -128,7 +131,13 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+<<<<<<< HEAD
 [SYS_calculate]   sys_calculate,
+=======
+
+
+[SYS_calculate] sys_calculate
+>>>>>>> 3d8cc15bd3e487d6b565c410978045389f51f0f2
 };
 
 void

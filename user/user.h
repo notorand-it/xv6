@@ -24,6 +24,8 @@ int sleep(int);
 int uptime(void);
 int calculate(int, int, char*, int*);
 
+int calculate(int x, int y, char* op, int* result);
+
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);
