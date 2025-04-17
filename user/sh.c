@@ -77,8 +77,7 @@ runcmd(struct cmd *cmd)
   if(ecmd->argv[0] == 0)
     exit(1);
 
-  /* ---------- custom built‑in: "!" ---------- */
-  /* ---------- custom built‑in: "!" ---------- */
+ 
 if(ecmd->argv[0] && strcmp(ecmd->argv[0], "!") == 0){
   char buf[1024] = {0};
   int  len = 0;
@@ -96,7 +95,7 @@ if(ecmd->argv[0] && strcmp(ecmd->argv[0], "!") == 0){
     exit(0);
   }
 
-  /* colour every “os” blue */
+
   for(int i = 0; i < len; i++){
     if(i+1 < len && buf[i] == 'o' && buf[i+1] == 's'){
       const char *blue = "\033[34mos\033[0m";
@@ -109,9 +108,7 @@ if(ecmd->argv[0] && strcmp(ecmd->argv[0], "!") == 0){
   write(1, "\n", 1);
   exit(0);
 }
-/* ---------- end custom built‑in ---------- */
 
-  /* ---------- end custom built‑in ---------- */
 
   exec(ecmd->argv[0], ecmd->argv);
   fprintf(2, "exec %s failed\n", ecmd->argv[0]);
