@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "pinfo.h"
 
 uint64
 sys_exit(void)
@@ -90,4 +91,26 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64
+sys_procinfo(void)
+{
+  struct pinfo p;
+  uint64 uptr;
+
+  argaddr(0, &uptr); 
+
+  struct proc *curproc = myproc();
+
+  // Fill the pinfo struct
+  p.ppid = curproc->parent ? curproc->parent->pid : 0;
+  p.syscall_count = curproc->syscall_count;
+  p.page_usage = (curproc->sz + PGSIZE - 1) / PGSIZE; // rounding up
+
+  // Copy the struct back to user space
+  if (copyout(curproc->pagetable, uptr, (char *)&p, sizeof(p)) < 0)
+    return -1;
+
+  return 0;
 }
