@@ -78,37 +78,39 @@ runcmd(struct cmd *cmd)
     exit(1);
 
   /* ---------- custom built‑in: "!" ---------- */
-  if(ecmd->argv[0] && strcmp(ecmd->argv[0], "!") == 0){
-    /* Join the rest of the arguments into one buffer */
-    char buf[1024] = {0};
-    int  len = 0;
-    for(int i = 1; ecmd->argv[i] && len < (int)sizeof(buf)-1; i++){
-      if(i != 1) buf[len++] = ' ';                  // keep spaces
-      int l = strlen(ecmd->argv[i]);
-      if(len + l >= (int)sizeof(buf)-1) l = sizeof(buf)-1-len;
-      memmove(buf + len, ecmd->argv[i], l);
-      len += l;
-    }
-    buf[len] = 0;
+  /* ---------- custom built‑in: "!" ---------- */
+if(ecmd->argv[0] && strcmp(ecmd->argv[0], "!") == 0){
+  char buf[1024] = {0};
+  int  len = 0;
+  for(int i = 1; ecmd->argv[i] && len < (int)sizeof(buf)-1; i++){
+    if(i != 1) buf[len++] = ' ';
+    int l = strlen(ecmd->argv[i]);
+    if(len + l >= (int)sizeof(buf)-1) l = sizeof(buf)-1-len;
+    memmove(buf + len, ecmd->argv[i], l);
+    len += l;
+  }
+  buf[len] = 0;
 
-    /* Rule 2: length guard */
-    if(len > 512){
-      printf("Message too long\n");
-      exit(0);
-    }
-
-    /* Rule 1: print, colouring every “os” blue */
-    for(int i = 0; i < len; i++){
-      if(i+1 < len && buf[i] == 'o' && buf[i+1] == 's'){
-        printf("\033[34m" "os" "\033[0m");   // blue “os”
-        i++;                                  // skip the ’s’ we just printed
-      } else {
-        printf("%c", buf[i]);
-      }
-    }
-    printf("\n");
+  if(len > 512){
+    printf("Message too long\n");
     exit(0);
   }
+
+  /* colour every “os” blue */
+  for(int i = 0; i < len; i++){
+    if(i+1 < len && buf[i] == 'o' && buf[i+1] == 's'){
+      const char *blue = "\033[34mos\033[0m";
+      write(1, blue, strlen(blue));
+      i++;                     // skip the 's'
+    } else {
+      write(1, &buf[i], 1);    // single byte
+    }
+  }
+  write(1, "\n", 1);
+  exit(0);
+}
+/* ---------- end custom built‑in ---------- */
+
   /* ---------- end custom built‑in ---------- */
 
   exec(ecmd->argv[0], ecmd->argv);
