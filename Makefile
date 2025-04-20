@@ -1,5 +1,11 @@
+include proj1/kernel/Makefile
+include proj1/user/Makefile
+
 K=kernel
 U=user
+
+include proj1/kernel/Makefile
+include proj1/user/Makefile
 
 OBJS = \
   $K/entry.o \
@@ -139,6 +145,11 @@ UPROGS=\
 	$U/_grind\
 	$U/_wc\
 	$U/_zombie\
+<<<<<<< HEAD
+	$U/_calc-test\
+=======
+	$U/_calc_test\
+>>>>>>> 3d8cc15bd3e487d6b565c410978045389f51f0f2
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

@@ -36,3 +36,9 @@ entry("getpid");
 entry("sbrk");
 entry("sleep");
 entry("uptime");
+<<<<<<< HEAD
+entry("calculate");
+=======
+
+entry("calculate");
+>>>>>>> 3d8cc15bd3e487d6b565c410978045389f51f0f2
