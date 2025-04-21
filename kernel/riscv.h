@@ -37,7 +37,6 @@ static inline void w_ ##r( uint64 x) {        \
 asm_csr_r(mhartid)
 
 // Machine Status Register, mstatus
-
 #define MSTATUS_MPP_MASK (3L << 11) // previous mode.
 #define MSTATUS_MPP_M (3L << 11)
 #define MSTATUS_MPP_S (1L << 11)
@@ -53,7 +52,6 @@ asm_csr_w(mstatus)
 asm_csr_w(mepc)
 
 // Supervisor Status Register, sstatus
-
 #define SSTATUS_SPP (1L << 8)  // Previous mode, 1=Supervisor, 0=User
 #define SSTATUS_SPIE (1L << 5) // Supervisor Previous Interrupt Enable
 #define SSTATUS_UPIE (1L << 4) // User Previous Interrupt Enable
@@ -84,12 +82,10 @@ asm_csr_w(mie)
 // supervisor exception program counter, holds the
 // instruction address to which a return from
 // exception will go.
-
 asm_csr_r(sepc)
 asm_csr_w(sepc)
 
 // Machine Exception Delegation
-
 asm_csr_r(medeleg)
 asm_csr_w(medeleg)
 
@@ -99,7 +95,6 @@ asm_csr_w(mideleg)
 
 // Supervisor Trap-Vector Base Address
 // low two bits are mode.
-
 asm_csr_r(stvec)
 asm_csr_w(stvec)
 
