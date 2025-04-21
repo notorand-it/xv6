@@ -7,7 +7,7 @@
 #define asm_csrr_r(n,r) \
 static inline uint64 r_ ##n() {                 \
   uint64 x;                                     \
-  asm volatile("cssr %0, " STR(r) : "=r" (x) ); \
+  asm volatile("csrr %0, " STR(r) : "=r" (x) ); \
   return x;                                     \
 }
 #define asm_csr_r(n) asm_csrr_r(n,n)
@@ -15,7 +15,7 @@ static inline uint64 r_ ##n() {                 \
 // Write into a CSR
 #define asm_csrr_w(n,r) \
 static inline void w_ ##n(uint64 x) {              \
-  asm volatile("cssw " STR(r) ",%0" : : "r" (x) ); \
+  asm volatile("csrw " STR(r) ",%0" : : "r" (x) ); \
 }
 #define asm_csr_w(n) asm_csrr_w(n,n)
 
@@ -29,7 +29,7 @@ uint64 x;                                     \
 
 // Write into a register
 #define asm_reg_w(r)                          \
-static inline void r_ ##r( uint64 x) {        \
+static inline void w_ ##r( uint64 x) {        \
   asm volatile("mv " STR(r) ",%0" : : "r" (x) ); \
 }
 
