@@ -1,13 +1,40 @@
 #ifndef __ASSEMBLER__
 
-// which hart (core) is this?
-static inline uint64
-r_mhartid()
-{
-  uint64 x;
-  asm volatile("csrr %0, mhartid" : "=r" (x) );
-  return x;
+#include "types.h"
+#include "macros.h"
+
+// Read a CSR 
+#define asm_csrr_r(n,r) \
+static inline uint64 r_ ##n() {                 \
+  uint64 x;                                     \
+  asm volatile("cssr %0, " STR(r) : "=r" (x) ); \
+  return x;                                     \
 }
+#define asm_csr_r(n) asm_csrr_r(n,n)
+
+// Write into a CSR
+#define asm_csrr_w(n,r) \
+static inline void w_ ##n(uint64 x) {              \
+  asm volatile("cssw " STR(r) ",%0" : : "r" (x) ); \
+}
+#define asm_csr_w(n) asm_csrr_w(n,n)
+
+// Read a register
+#define asm_reg_r(r)                          \
+static inline uint64 r_ ##r() {               \
+uint64 x;                                     \
+  asm volatile("mv %0, " STR(r) : "=r" (x) ); \
+  return x;                                   \
+}
+
+// Write into a register
+#define asm_reg_w(r)                          \
+static inline void r_ ##r( uint64 x) {        \
+  asm volatile("mv " STR(r) ",%0" : : "r" (x) ); \
+}
+
+// which hart (core) is this?
+asm_csr_r(mhartid)
 
 // Machine Status Register, mstatus
 
@@ -17,28 +44,13 @@ r_mhartid()
 #define MSTATUS_MPP_U (0L << 11)
 #define MSTATUS_MIE (1L << 3)    // machine-mode interrupt enable.
 
-static inline uint64
-r_mstatus()
-{
-  uint64 x;
-  asm volatile("csrr %0, mstatus" : "=r" (x) );
-  return x;
-}
-
-static inline void 
-w_mstatus(uint64 x)
-{
-  asm volatile("csrw mstatus, %0" : : "r" (x));
-}
+asm_csr_r(mstatus)
+asm_csr_w(mstatus)
 
 // machine exception program counter, holds the
 // instruction address to which a return from
 // exception will go.
-static inline void 
-w_mepc(uint64 x)
-{
-  asm volatile("csrw mepc, %0" : : "r" (x));
-}
+asm_csr_w(mepc)
 
 // Supervisor Status Register, sstatus
 
@@ -48,178 +60,60 @@ w_mepc(uint64 x)
 #define SSTATUS_SIE (1L << 1)  // Supervisor Interrupt Enable
 #define SSTATUS_UIE (1L << 0)  // User Interrupt Enable
 
-static inline uint64
-r_sstatus()
-{
-  uint64 x;
-  asm volatile("csrr %0, sstatus" : "=r" (x) );
-  return x;
-}
-
-static inline void 
-w_sstatus(uint64 x)
-{
-  asm volatile("csrw sstatus, %0" : : "r" (x));
-}
+asm_csr_r(sstatus)
+asm_csr_w(sstatus)
 
 // Supervisor Interrupt Pending
-static inline uint64
-r_sip()
-{
-  uint64 x;
-  asm volatile("csrr %0, sip" : "=r" (x) );
-  return x;
-}
-
-static inline void 
-w_sip(uint64 x)
-{
-  asm volatile("csrw sip, %0" : : "r" (x));
-}
+asm_csr_r(sip)
+asm_csr_w(sip)
 
 // Supervisor Interrupt Enable
 #define SIE_SEIE (1L << 9) // external
 #define SIE_STIE (1L << 5) // timer
 #define SIE_SSIE (1L << 1) // software
-static inline uint64
-r_sie()
-{
-  uint64 x;
-  asm volatile("csrr %0, sie" : "=r" (x) );
-  return x;
-}
 
-static inline void 
-w_sie(uint64 x)
-{
-  asm volatile("csrw sie, %0" : : "r" (x));
-}
+asm_csr_r(sie)
+asm_csr_w(sie)
 
 // Machine-mode Interrupt Enable
 #define MIE_STIE (1L << 5)  // supervisor timer
-static inline uint64
-r_mie()
-{
-  uint64 x;
-  asm volatile("csrr %0, mie" : "=r" (x) );
-  return x;
-}
 
-static inline void 
-w_mie(uint64 x)
-{
-  asm volatile("csrw mie, %0" : : "r" (x));
-}
+asm_csr_r(mie)
+asm_csr_w(mie)
 
 // supervisor exception program counter, holds the
 // instruction address to which a return from
 // exception will go.
-static inline void 
-w_sepc(uint64 x)
-{
-  asm volatile("csrw sepc, %0" : : "r" (x));
-}
 
-static inline uint64
-r_sepc()
-{
-  uint64 x;
-  asm volatile("csrr %0, sepc" : "=r" (x) );
-  return x;
-}
+asm_csr_r(sepc)
+asm_csr_w(sepc)
 
 // Machine Exception Delegation
-static inline uint64
-r_medeleg()
-{
-  uint64 x;
-  asm volatile("csrr %0, medeleg" : "=r" (x) );
-  return x;
-}
 
-static inline void 
-w_medeleg(uint64 x)
-{
-  asm volatile("csrw medeleg, %0" : : "r" (x));
-}
+asm_csr_r(medeleg)
+asm_csr_w(medeleg)
 
 // Machine Interrupt Delegation
-static inline uint64
-r_mideleg()
-{
-  uint64 x;
-  asm volatile("csrr %0, mideleg" : "=r" (x) );
-  return x;
-}
-
-static inline void 
-w_mideleg(uint64 x)
-{
-  asm volatile("csrw mideleg, %0" : : "r" (x));
-}
+asm_csr_r(mideleg)
+asm_csr_w(mideleg)
 
 // Supervisor Trap-Vector Base Address
 // low two bits are mode.
-static inline void 
-w_stvec(uint64 x)
-{
-  asm volatile("csrw stvec, %0" : : "r" (x));
-}
 
-static inline uint64
-r_stvec()
-{
-  uint64 x;
-  asm volatile("csrr %0, stvec" : "=r" (x) );
-  return x;
-}
+asm_csr_r(stvec)
+asm_csr_w(stvec)
 
 // Supervisor Timer Comparison Register
-static inline uint64
-r_stimecmp()
-{
-  uint64 x;
-  // asm volatile("csrr %0, stimecmp" : "=r" (x) );
-  asm volatile("csrr %0, 0x14d" : "=r" (x) );
-  return x;
-}
-
-static inline void 
-w_stimecmp(uint64 x)
-{
-  // asm volatile("csrw stimecmp, %0" : : "r" (x));
-  asm volatile("csrw 0x14d, %0" : : "r" (x));
-}
+asm_csrr_r(stimecmp,0x14d)
+asm_csrr_w(stimecmp,0x14d)
 
 // Machine Environment Configuration Register
-static inline uint64
-r_menvcfg()
-{
-  uint64 x;
-  // asm volatile("csrr %0, menvcfg" : "=r" (x) );
-  asm volatile("csrr %0, 0x30a" : "=r" (x) );
-  return x;
-}
-
-static inline void 
-w_menvcfg(uint64 x)
-{
-  // asm volatile("csrw menvcfg, %0" : : "r" (x));
-  asm volatile("csrw 0x30a, %0" : : "r" (x));
-}
+asm_csrr_r(menvcfg,0x30a)
+asm_csrr_w(menvcfg,0x30a)
 
 // Physical Memory Protection
-static inline void
-w_pmpcfg0(uint64 x)
-{
-  asm volatile("csrw pmpcfg0, %0" : : "r" (x));
-}
-
-static inline void
-w_pmpaddr0(uint64 x)
-{
-  asm volatile("csrw pmpaddr0, %0" : : "r" (x));
-}
+asm_csr_w(pmpcfg0)
+asm_csr_w(pmpaddr0)
 
 // use riscv's sv39 page table scheme.
 #define SATP_SV39 (8L << 60)
@@ -228,61 +122,21 @@ w_pmpaddr0(uint64 x)
 
 // supervisor address translation and protection;
 // holds the address of the page table.
-static inline void 
-w_satp(uint64 x)
-{
-  asm volatile("csrw satp, %0" : : "r" (x));
-}
-
-static inline uint64
-r_satp()
-{
-  uint64 x;
-  asm volatile("csrr %0, satp" : "=r" (x) );
-  return x;
-}
+asm_csr_r(satp)
+asm_csr_w(satp)
 
 // Supervisor Trap Cause
-static inline uint64
-r_scause()
-{
-  uint64 x;
-  asm volatile("csrr %0, scause" : "=r" (x) );
-  return x;
-}
+asm_csr_r(scause)
 
 // Supervisor Trap Value
-static inline uint64
-r_stval()
-{
-  uint64 x;
-  asm volatile("csrr %0, stval" : "=r" (x) );
-  return x;
-}
+asm_csr_r(stval)
 
-// Machine-mode Counter-Enable
-static inline void 
-w_mcounteren(uint64 x)
-{
-  asm volatile("csrw mcounteren, %0" : : "r" (x));
-}
-
-static inline uint64
-r_mcounteren()
-{
-  uint64 x;
-  asm volatile("csrr %0, mcounteren" : "=r" (x) );
-  return x;
-}
+// Machine-mode Counter-Enabler
+asm_csr_r(mcounteren)
+asm_csr_w(mcounteren)
 
 // machine-mode cycle counter
-static inline uint64
-r_time()
-{
-  uint64 x;
-  asm volatile("csrr %0, time" : "=r" (x) );
-  return x;
-}
+asm_csr_r(time)
 
 // enable device interrupts
 static inline void
@@ -306,37 +160,14 @@ intr_get()
   return (x & SSTATUS_SIE) != 0;
 }
 
-static inline uint64
-r_sp()
-{
-  uint64 x;
-  asm volatile("mv %0, sp" : "=r" (x) );
-  return x;
-}
+asm_reg_r(sp)
 
 // read and write tp, the thread pointer, which xv6 uses to hold
 // this core's hartid (core number), the index into cpus[].
-static inline uint64
-r_tp()
-{
-  uint64 x;
-  asm volatile("mv %0, tp" : "=r" (x) );
-  return x;
-}
+asm_reg_r(tp)
+asm_reg_w(tp)
 
-static inline void 
-w_tp(uint64 x)
-{
-  asm volatile("mv tp, %0" : : "r" (x));
-}
-
-static inline uint64
-r_ra()
-{
-  uint64 x;
-  asm volatile("mv %0, ra" : "=r" (x) );
-  return x;
-}
+asm_reg_r(ra)
 
 // flush the TLB.
 static inline void
