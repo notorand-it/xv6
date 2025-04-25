@@ -16,6 +16,7 @@
 #include "proc.h"
 
 volatile int panicked = 0;
+volatile static kstr panicstr = {.u64=0x203a43494e41500aul};
 
 // lock to avoid interleaving concurrent printf's.
 static struct {
@@ -168,6 +169,20 @@ panic(char *s)
   panicked = 1; // freeze uart output from other CPUs
   for(;;)
     ;
+}
+
+void panik(kstr s)
+{
+  int n=sizeof(s);
+  pr.locking = 0;
+  panicked = 1; // freeze uart output from other CPUs
+  consputc('\n');
+  for(uchar *p=panicstr.uc; n && *p; n--,p++)
+    consputc(*p);
+  for(uchar *p=s.uc; n && *p; n--,p++)
+    consputc(*p);
+  consputc('\n');
+  for(;;);
 }
 
 void

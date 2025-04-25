@@ -1,3 +1,5 @@
+#pragma once
+
 typedef unsigned int   uint;
 typedef unsigned short ushort;
 typedef unsigned char  uchar;
@@ -15,5 +17,4 @@ typedef struct {
     uint64 u64;
     uchar  uc[sizeof(uint64)];
   };
-  uchar eos[0];
 } kstr;
