@@ -1,6 +1,5 @@
 // Mutual exclusion spin locks.
 
-#include "types.h"
 #include "macros.h"
 #include "param.h"
 #include "spinlock.h"
@@ -11,17 +10,17 @@
 void
 acquirev2(spinlockv2 lk) {
   push_off();
-  if(lk->lock && lk->core == r_mhartid())
-    panik(kstr("acquire2"));
-  while(__sync_lock_test_and_set(&lk->lock, 1) != 0);
+  if(lk->lock == ~r_mhartid())
+    panik(kstr("acquire"));
+  while(__sync_lock_test_and_set(&lk->lock, ~r_mhartid()) != 0);
   __sync_synchronize();
-  lk->core = (uint) r_mhartid();
+  lk->lock = ~r_mhartid();
 }
 
 void
 releasev2(spinlockv2 lk) {
-  if(lk->lock && lk->core == r_mhartid())
-    panik(kstr("release2"));
+  if(lk->lock != ~r_mhartid())
+    panik(kstr("release"));
   __sync_synchronize();
   __sync_lock_release(&lk->lock);
   pop_off();
