@@ -3,7 +3,6 @@
 #include "types.h"
 #include "macros.h"
 #include "param.h"
-#include "memlayout.h"
 #include "spinlock.h"
 #include "riscv.h"
 #include "proc.h"
@@ -14,7 +13,7 @@ acquirev2(spinlockv2 lk) {
   push_off();
   if(lk->lock && lk->core == r_mhartid())
     panik(kstr("acquire2"));
-  while(__sync_lock_test_and_set(&lk->locked, 1) != 0);
+  while(__sync_lock_test_and_set(&lk->lock, 1) != 0);
   __sync_synchronize();
   lk->core = (uint) r_mhartid();
 }

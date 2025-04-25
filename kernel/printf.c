@@ -7,13 +7,12 @@
 #include "types.h"
 #include "param.h"
 #include "spinlock.h"
-#include "sleeplock.h"
-#include "fs.h"
-#include "file.h"
-#include "memlayout.h"
-#include "riscv.h"
+// #include "fs.h"
+// #include "file.h"
+// #include "memlayout.h"
+// #include "riscv.h"
 #include "defs.h"
-#include "proc.h"
+//#include "proc.h"
 
 volatile int panicked = 0;
 volatile static kstr panicstr = {.u64=0x203a43494e41500aul};
@@ -171,15 +170,17 @@ panic(char *s)
     ;
 }
 
-void panik(kstr s)
+void
+panik(kstr s)
 {
   int n=sizeof(s);
+  uchar *p;
   pr.locking = 0;
   panicked = 1; // freeze uart output from other CPUs
   consputc('\n');
-  for(uchar *p=panicstr.uc; n && *p; n--,p++)
+  for(p=(uchar*)panicstr.uc; n && *p; n--,p++)
     consputc(*p);
-  for(uchar *p=s.uc; n && *p; n--,p++)
+  for(p=s.uc; n && *p; n--,p++)
     consputc(*p);
   consputc('\n');
   for(;;);
