@@ -176,3 +176,19 @@ printfinit(void)
   initlock(&pr.lock, "pr");
   pr.locking = 1;
 }
+
+void
+panik(uint64 s)
+{
+  int n=sizeof(s);
+  uchar *p;
+  pr.locking = 0;
+  panicked = 1; // freeze uart output from other CPUs
+  consputc('\n');
+  for(p=(uchar*)panicstr; n && *p; n--,p++)
+    consputc(*p);
+  for(p=s.uc; n && *p; n--,p++)
+    consputc(*p);
+  consputc('\n');
+  for(;;);
+}
