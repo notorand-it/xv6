@@ -19,6 +19,20 @@ static inline void w_ ##n(uint64 x) {              \
 }
 #define asm_csr_w(n) asm_csrr_w(n,n)
 
+// Set bits in a CSR
+#define asm_csrr_s(n,r) \
+static inline void s_ ##n(uint64 x) {              \
+  asm volatile("csrrs %0," STR(r) : "=r" (x) ); \
+}
+#define asm_csr_s(n) asm_csrr_s(n,n)
+
+// Clear bits in a CSR
+#define asm_csrr_c(n,r) \
+static inline void c_ ##n(uint64 x) {              \
+  asm volatile("csrrc %0," STR(r) : "=r" (x) ); \
+}
+#define asm_csr_c(n) asm_csrr_c(n,n)
+
 // Read a register
 #define asm_reg_r(r)                          \
 static inline uint64 r_ ##r() {               \
@@ -38,10 +52,10 @@ asm_csr_r(mhartid)
 
 // Machine Status Register, mstatus
 #define MSTATUS_MPP_MASK (3L << 11) // previous mode.
-#define MSTATUS_MPP_M (3L << 11)
-#define MSTATUS_MPP_S (1L << 11)
-#define MSTATUS_MPP_U (0L << 11)
-#define MSTATUS_MIE (1L << 3)    // machine-mode interrupt enable.
+#define MSTATUS_MPP_M    (3L << 11)
+#define MSTATUS_MPP_S    (1L << 11)
+#define MSTATUS_MPP_U    (0L << 11)
+#define MSTATUS_MIE      (1L << 3)  // machine-mode interrupt enable.
 
 asm_csr_r(mstatus)
 asm_csr_w(mstatus)
@@ -52,14 +66,17 @@ asm_csr_w(mstatus)
 asm_csr_w(mepc)
 
 // Supervisor Status Register, sstatus
-#define SSTATUS_SPP (1L << 8)  // Previous mode, 1=Supervisor, 0=User
+#define SSTATUS_SPP  (1L << 8) // Previous mode, 1=Supervisor, 0=User
 #define SSTATUS_SPIE (1L << 5) // Supervisor Previous Interrupt Enable
 #define SSTATUS_UPIE (1L << 4) // User Previous Interrupt Enable
-#define SSTATUS_SIE (1L << 1)  // Supervisor Interrupt Enable
-#define SSTATUS_UIE (1L << 0)  // User Interrupt Enable
+#define SSTATUS_SIE  (1L << 1) // Supervisor Interrupt Enable
+#define SSTATUS_UIE  (1L << 0) // User Interrupt Enable
 
 asm_csr_r(sstatus)
 asm_csr_w(sstatus)
+asm_csr_s(sstatus)
+asm_csr_c(sstatus)
+
 
 // Supervisor Interrupt Pending
 asm_csr_r(sip)
@@ -137,14 +154,14 @@ asm_csr_r(time)
 static inline void
 intr_on()
 {
-  w_sstatus(r_sstatus() | SSTATUS_SIE);
+  s_sstatus(SSTATUS_SIE);
 }
 
 // disable device interrupts
 static inline void
 intr_off()
 {
-  w_sstatus(r_sstatus() & ~SSTATUS_SIE);
+  c_sstatus(SSTATUS_SIE);
 }
 
 // are device interrupts enabled?
