@@ -20,16 +20,16 @@ static inline void w_ ##n(uint64 x) {              \
 #define asm_csr_w(n) asm_csrr_w(n,n)
 
 // Set bits in a CSR
-#define asm_csrr_s(n,r)                        \
-static inline void s_ ##n(uint64 x) {          \
-  asm volatile("csrrs %0," STR(r) : "r" (x) ); \
+#define asm_csrr_s(n,r) \
+static inline void s_ ##n(uint64 x) {              \
+  asm volatile("csrrs %0," STR(r) : "=r" (x) ); \
 }
 #define asm_csr_s(n) asm_csrr_s(n,n)
 
 // Clear bits in a CSR
-#define asm_csrr_c(n,r)                        \
-static inline void s_ ##n(uint64 x) {          \
-  asm volatile("csrrc %0," STR(r) : "r" (x) ); \
+#define asm_csrr_c(n,r) \
+static inline void c_ ##n(uint64 x) {              \
+  asm volatile("csrrc %0," STR(r) : "=r" (x) ); \
 }
 #define asm_csr_c(n) asm_csrr_c(n,n)
 
@@ -74,6 +74,8 @@ asm_csr_w(mepc)
 
 asm_csr_r(sstatus)
 asm_csr_w(sstatus)
+asm_csr_s(sstatus)
+asm_csr_c(sstatus)
 
 // Supervisor Interrupt Pending
 asm_csr_r(sip)
@@ -151,14 +153,14 @@ asm_csr_r(time)
 static inline void
 intr_on()
 {
-  w_sstatus(r_sstatus() | SSTATUS_SIE);
+  s_sstatus(SSTATUS_SIE);
 }
 
 // disable device interrupts
 static inline void
 intr_off()
 {
-  w_sstatus(r_sstatus() & ~SSTATUS_SIE);
+  c_sstatus(SSTATUS_SIE);
 }
 
 // are device interrupts enabled?
