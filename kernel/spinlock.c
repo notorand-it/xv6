@@ -1,12 +1,32 @@
 // Mutual exclusion spin locks.
 
-#include "types.h"
+#include "macros.h"
 #include "param.h"
-#include "memlayout.h"
 #include "spinlock.h"
 #include "riscv.h"
 #include "proc.h"
 #include "defs.h"
+
+#define MSBIT64 (1ul<<(8*sizeof(long)-1))
+
+void
+acquirev2(uint64* lk) {
+  push_off();
+  if(lk[0] == (r_mhartid()|MSBIT64))
+    panik(kstr("acquire"));
+  while(__sync_or_and_fetch(lk,MSBIT64) < 0);
+  lk[0] = r_mhartid()|MSBIT64;
+  __sync_synchronize();
+}
+
+void
+releasev2(uint64* lk) {
+  if(lk[0] != (r_mhartid()|MSBIT64))
+    panik(kstr("release"));
+  __sync_synchronize();
+  __sync_lock_release(&lk);
+  pop_off();
+}
 
 void
 initlock(struct spinlock *lk, char *name)
