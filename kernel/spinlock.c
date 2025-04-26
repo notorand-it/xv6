@@ -7,22 +7,24 @@
 #include "proc.h"
 #include "defs.h"
 
+#define MSBIT64 (1ul<<(8*sizeof(long)-1))
+
 void
-acquirev2(spinlockv2 lk) {
+acquirev2(uint64* lk) {
   push_off();
-  if(lk->lock == ~r_mhartid())
+  if(lk[0] == (r_mhartid()|MSBIT64))
     panik(kstr("acquire"));
-  while(__sync_lock_test_and_set(&lk->lock, ~r_mhartid()) != 0);
+  while(__sync_or_and_fetch(lk,MSBIT64) < 0);
+  lk[0] = r_mhartid()|MSBIT64;
   __sync_synchronize();
-  lk->lock = ~r_mhartid();
 }
 
 void
-releasev2(spinlockv2 lk) {
-  if(lk->lock != ~r_mhartid())
+releasev2(uint64* lk) {
+  if(lk[0] != (r_mhartid()|MSBIT64))
     panik(kstr("release"));
   __sync_synchronize();
-  __sync_lock_release(&lk->lock);
+  __sync_lock_release(&lk);
   pop_off();
 }
 

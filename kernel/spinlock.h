@@ -12,7 +12,5 @@ struct spinlock {
 
 typedef struct {
   uint64 lock;
-  kstr   name;
-} spinlockv2[1];
-
-#define spinlockv2_init ((spinlockv3){{0,0}})
+  uint64 name;
+} spinlockv2;
