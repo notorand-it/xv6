@@ -14,6 +14,14 @@ acquirev2(uint64* lk) {
   push_off();
   if(lk[0] == (r_mhartid()|MSBIT64))
     panik(kstr("acquire"));
+  /* On a RV64 the next loop is rendered as:
+  ** # Preparation of 1<<63
+  ** li a5,-1
+  ** slli a5,a5,63
+  ** # Actual loop
+  ** amoor.d.aqrl	zero,a5,0(s0)
+  ** # 0(s0) is the pointer argument
+  */
   while(__sync_or_and_fetch(lk,MSBIT64) < 0);
   lk[0] = r_mhartid()|MSBIT64;
   __sync_synchronize();
