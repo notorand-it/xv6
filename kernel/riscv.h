@@ -20,15 +20,15 @@ static inline void w_ ##n(uint64 x) {              \
 #define asm_csr_w(n) asm_csrr_w(n,n)
 
 // Set bits in a CSR
-#define asm_csrr_s(n,r) \
-static inline void s_ ##n(uint64 x) {              \
+#define asm_csrr_s(n,r)                         \
+static inline void s_ ##n(uint64 x) {           \
   asm volatile("csrrs %0," STR(r) : "=r" (x) ); \
 }
 #define asm_csr_s(n) asm_csrr_s(n,n)
 
 // Clear bits in a CSR
-#define asm_csrr_c(n,r) \
-static inline void c_ ##n(uint64 x) {              \
+#define asm_csrr_c(n,r)                         \
+static inline void c_ ##n(uint64 x) {           \
   asm volatile("csrrc %0," STR(r) : "=r" (x) ); \
 }
 #define asm_csr_c(n) asm_csrr_c(n,n)
@@ -42,8 +42,8 @@ uint64 x;                                     \
 }
 
 // Write into a register
-#define asm_reg_w(r)                          \
-static inline void w_ ##r( uint64 x) {        \
+#define asm_reg_w(r)                             \
+static inline void w_ ##r( uint64 x) {           \
   asm volatile("mv " STR(r) ",%0" : : "r" (x) ); \
 }
 
@@ -76,7 +76,6 @@ asm_csr_r(sstatus)
 asm_csr_w(sstatus)
 asm_csr_s(sstatus)
 asm_csr_c(sstatus)
-
 
 // Supervisor Interrupt Pending
 asm_csr_r(sip)
@@ -151,26 +150,13 @@ asm_csr_w(mcounteren)
 asm_csr_r(time)
 
 // enable device interrupts
-static inline void
-intr_on()
-{
-  s_sstatus(SSTATUS_SIE);
-}
+#define intr_on() s_sstatus(SSTATUS_SIE)
 
 // disable device interrupts
-static inline void
-intr_off()
-{
-  c_sstatus(SSTATUS_SIE);
-}
+#define intr_off() c_sstatus(SSTATUS_SIE)
 
 // are device interrupts enabled?
-static inline int
-intr_get()
-{
-  uint64 x = r_sstatus();
-  return (x & SSTATUS_SIE) != 0;
-}
+#define intr_get() (r_sstatus()&SSTATUS_SIE)
 
 asm_reg_r(sp)
 
@@ -216,7 +202,7 @@ typedef uint64 *pagetable_t; // 512 PTEs
 // extract the three 9-bit page table indices from a virtual address.
 #define PXMASK          0x1FF // 9 bits
 #define PXSHIFT(level)  (PGSHIFT+(9*(level)))
-#define PX(level, va) ((((uint64) (va)) >> PXSHIFT(level)) & PXMASK)
+#define PX(level, va)   ((((uint64) (va)) >> PXSHIFT(level)) & PXMASK)
 
 // one beyond the highest possible virtual address.
 // MAXVA is actually one bit less than the max allowed by
