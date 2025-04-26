@@ -16,6 +16,7 @@
 #include "proc.h"
 
 volatile int panicked = 0;
+volatile static uint64 panicstr = 0x203a43494e41500aul; // "PANIC: "
 
 // lock to avoid interleaving concurrent printf's.
 static struct {
@@ -187,7 +188,7 @@ panik(uint64 s)
   consputc('\n');
   for(p=(uchar*)panicstr; n && *p; n--,p++)
     consputc(*p);
-  for(p=s.uc; n && *p; n--,p++)
+  for(p=(uchar*)&s; n && *p; n--,p++)
     consputc(*p);
   consputc('\n');
   for(;;);
