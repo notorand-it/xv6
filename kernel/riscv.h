@@ -19,6 +19,20 @@ static inline void w_ ##n(uint64 x) {              \
 }
 #define asm_csr_w(n) asm_csrr_w(n,n)
 
+// Set bits in a CSR
+#define asm_csrr_s(n,r)                        \
+static inline void s_ ##n(uint64 x) {          \
+  asm volatile("csrrs %0," STR(r) : "r" (x) ); \
+}
+#define asm_csr_s(n) asm_csrr_s(n,n)
+
+// Clear bits in a CSR
+#define asm_csrr_c(n,r)                        \
+static inline void s_ ##n(uint64 x) {          \
+  asm volatile("csrrc %0," STR(r) : "r" (x) ); \
+}
+#define asm_csr_c(n) asm_csrr_c(n,n)
+
 // Read a register
 #define asm_reg_r(r)                          \
 static inline uint64 r_ ##r() {               \
